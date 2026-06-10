@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Watch</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="watch-shell">
+      <nav class="watch-nav">
+        <a class="nav-link" href="/">Back</a>
+        <a class="nav-link" href="/admin">Admin</a>
+      </nav>
+
+      <section class="watch-grid">
+        <div>
+          <video id="watch-player" controls playsinline></video>
+          <iframe id="watch-embed" allowfullscreen hidden></iframe>
+          <div id="watch-status" class="status"></div>
+        </div>
+        <aside class="watch-meta">
+          <img id="watch-thumb" alt="" />
+          <h1 id="watch-title"></h1>
+          <p id="watch-description"></p>
+        </aside>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script src="/watch.js?v=20260611-001" type="module"></script>
+  </body>
+</html>

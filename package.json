@@ -1,0 +1,23 @@
+{
+  "name": "site-source-inspector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "express": "^5.1.0",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.29",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

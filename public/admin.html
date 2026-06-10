@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin - Site Source Inspector</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <h1>Admin</h1>
+          <p>Paste a page URL. Confirm metadata and direct source before saving.</p>
+        </div>
+        <a class="nav-link" href="/">View site</a>
+      </section>
+
+      <section class="admin-grid">
+        <div class="admin-panel">
+          <h2>Import</h2>
+          <div class="inspect-form">
+            <input id="admin-url" type="text" placeholder="Paste source page URL" autocomplete="url" />
+            <button id="inspect-url" type="button">Inspect</button>
+          </div>
+          <div id="admin-status" class="status"></div>
+
+          <div id="source-choice" class="source-choice"></div>
+        </div>
+
+        <div class="admin-panel">
+          <h2>Preview</h2>
+          <video id="admin-player" controls playsinline></video>
+          <iframe id="admin-embed" allowfullscreen hidden></iframe>
+          <div id="admin-player-status" class="status"></div>
+        </div>
+      </section>
+
+      <section class="admin-panel">
+        <h2>Metadata</h2>
+        <div class="editor-grid">
+          <label>
+            Title
+            <input id="video-title" type="text" />
+          </label>
+          <label>
+            Thumbnail
+            <input id="video-thumbnail" type="text" />
+          </label>
+          <div class="thumbnail-preview">
+            <img id="thumbnail-preview" alt="" hidden />
+          </div>
+          <label class="wide">
+            Description
+            <textarea id="video-description" rows="5"></textarea>
+          </label>
+          <label class="wide">
+            Direct Video Source
+            <input id="video-source" type="text" />
+          </label>
+          <label class="wide">
+            Page URL
+            <input id="video-page-url" type="text" />
+          </label>
+        </div>
+        <button id="save-video" type="button" disabled>Save Video</button>
+        <div id="save-status" class="status"></div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <script src="/admin.js?v=20260611-004" type="module"></script>
+  </body>
+</html>
