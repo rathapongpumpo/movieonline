@@ -11,7 +11,7 @@
 
 body {
   margin: 0;
-  background: #080a0f;
+  background: #0a0d14;
 }
 
 button,
@@ -72,8 +72,8 @@ p {
 }
 
 .admin-shell {
-  width: min(1560px, calc(100% - 32px));
-  margin: 20px auto 64px;
+  width: min(1500px, calc(100% - 32px));
+  margin: 18px auto 64px;
 }
 
 .admin-topbar,
@@ -86,11 +86,11 @@ p {
 }
 
 .admin-topbar {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .admin-topbar h1 {
-  font-size: 34px;
+  font-size: 32px;
 }
 
 .admin-stats {
@@ -100,11 +100,11 @@ p {
 }
 
 .stat {
-  min-width: 92px;
+  min-width: 84px;
   border: 1px solid #313948;
   border-radius: 8px;
   background: #121722;
-  padding: 8px 10px;
+  padding: 7px 10px;
 }
 
 .stat span {
@@ -133,8 +133,8 @@ p {
 
 .admin-dashboard {
   display: grid;
-  grid-template-columns: minmax(520px, 0.82fr) minmax(680px, 1.18fr);
-  gap: 16px;
+  grid-template-columns: minmax(520px, 0.9fr) minmax(680px, 1.1fr);
+  gap: 18px;
   align-items: start;
 }
 
@@ -145,16 +145,16 @@ p {
 }
 
 .panel {
-  border: 1px solid #313948;
+  border: 1px solid #263142;
   border-radius: 8px;
-  background: #151a24;
-  padding: 16px;
+  background: #121722;
+  padding: 18px;
 }
 
 .import-panel,
 .source-picker {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .inspect-row {
@@ -228,15 +228,14 @@ p {
 }
 
 .editor-panel {
-  position: sticky;
-  top: 14px;
+  display: grid;
+  gap: 14px;
 }
 
 .editor-grid {
   display: grid;
   grid-template-columns: 1fr 160px;
   gap: 12px;
-  margin-top: 12px;
 }
 
 .editor-grid label {
@@ -253,6 +252,27 @@ p {
 .thumb-review {
   grid-column: 1 / -1;
   width: 190px;
+}
+
+.save-callout {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #39465a;
+  border-radius: 8px;
+  background: #0f141e;
+  padding: 14px;
+}
+
+.primary-save {
+  width: 100%;
+  min-height: 58px;
+  font-size: 18px;
+}
+
+.save-callout span {
+  color: #aeb8c8;
+  font-size: 13px;
+  text-align: center;
 }
 
 .chips,
@@ -304,6 +324,11 @@ p {
   gap: 8px;
 }
 
+.source-picker {
+  border-top: 1px solid #263142;
+  padding-top: 14px;
+}
+
 .source-group {
   display: grid;
   gap: 8px;
@@ -330,7 +355,7 @@ p {
   gap: 8px;
   align-items: center;
   padding: 10px;
-  border: 1px solid #313948;
+  border: 1px solid #2d3748;
   border-radius: 8px;
   background: #10151e;
 }

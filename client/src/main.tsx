@@ -69,7 +69,7 @@ const emptyForm: VideoForm = {
   title: "",
   description: "",
   thumbnail: "",
-  category: "Uncategorized",
+  category: "ยังไม่จัดหมวด",
   pageUrl: "",
   sourceUrl: "",
   sourceType: "hls"
@@ -86,7 +86,7 @@ function AdminPage() {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [inspectStatus, setInspectStatus] = useState("Ready");
+  const [inspectStatus, setInspectStatus] = useState("พร้อมใช้งาน");
   const [inspectResult, setInspectResult] = useState<InspectResult | undefined>();
   const [selectedSource, setSelectedSource] = useState<Candidate | undefined>();
   const [form, setForm] = useState<VideoForm>(emptyForm);
@@ -101,20 +101,20 @@ function AdminPage() {
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [libraryStatus, setLibraryStatus] = useState("Loading library...");
+  const [libraryStatus, setLibraryStatus] = useState("กำลังโหลดคลังหนัง...");
 
   useEffect(() => {
     loadVideos();
   }, [page, pageSize, search, categoryFilter]);
 
   async function loadVideos() {
-    setLibraryStatus("Loading library...");
+    setLibraryStatus("กำลังโหลดคลังหนัง...");
     try {
       const data = await fetchVideoPage({ page, pageSize, search, category: categoryFilter });
       setVideos(data.videos);
       setCategories(data.categories);
       setTotal(data.total);
-      setLibraryStatus(data.total ? "" : "No matching videos.");
+      setLibraryStatus(data.total ? "" : "ไม่พบรายการที่ตรงกับเงื่อนไข");
     } catch (error) {
       setLibraryStatus(error instanceof Error ? error.message : String(error));
     }
@@ -124,7 +124,7 @@ function AdminPage() {
     if (!url.trim()) return;
     setBusy(true);
     setProgress(8);
-    setInspectStatus("Inspecting page...");
+    setInspectStatus("กำลังตรวจสอบหน้าเว็บ...");
     setNotice({ tone: "idle", text: "" });
     setInspectResult(undefined);
     setSelectedSource(undefined);
@@ -137,7 +137,7 @@ function AdminPage() {
       });
       setProgress(62);
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Inspect failed");
+      if (!response.ok) throw new Error(data.error || "ตรวจสอบไม่สำเร็จ");
 
       const source = getDefaultSource(data);
       setInspectResult(data);
@@ -164,7 +164,7 @@ function AdminPage() {
   function startNew() {
     setUrl("");
     setProgress(0);
-    setInspectStatus("Ready");
+    setInspectStatus("พร้อมใช้งาน");
     setInspectResult(undefined);
     setSelectedSource(undefined);
     setEditingId(undefined);
@@ -186,7 +186,7 @@ function AdminPage() {
   }
 
   async function saveVideo() {
-    setNotice({ tone: "loading", text: editingId ? "Updating video..." : "Saving video..." });
+    setNotice({ tone: "loading", text: editingId ? "กำลังอัปเดต..." : "กำลังบันทึก..." });
     try {
       const response = await fetch(editingId ? `/api/videos/${editingId}` : "/api/videos", {
         method: editingId ? "PUT" : "POST",
@@ -194,9 +194,9 @@ function AdminPage() {
         body: JSON.stringify(form)
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Save failed");
+      if (!response.ok) throw new Error(translateError(data.error || "บันทึกไม่สำเร็จ"));
       setEditingId(data.video.id);
-      setNotice({ tone: "success", text: editingId ? "Updated." : `Saved. Open /watch/${data.video.id}` });
+      setNotice({ tone: "success", text: editingId ? "อัปเดตแล้ว" : `บันทึกแล้ว เปิดดูได้ที่ /watch/${data.video.id}` });
       await loadVideos();
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
@@ -215,20 +215,20 @@ function AdminPage() {
     });
     setForm(recordToForm(video));
     setProgress(0);
-    setInspectStatus(`Editing #${video.id}`);
+    setInspectStatus(`กำลังแก้ไข #${video.id}`);
     setNotice({ tone: "idle", text: "" });
   }
 
   async function deleteVideoRecord(video: VideoRecord) {
-    if (!window.confirm(`Delete "${video.title}"?`)) return;
+    if (!window.confirm(`ลบ "${video.title}" ใช่ไหม?`)) return;
     const response = await fetch(`/api/videos/${video.id}`, { method: "DELETE" });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      setNotice({ tone: "error", text: data.error || "Delete failed" });
+      setNotice({ tone: "error", text: data.error || "ลบไม่สำเร็จ" });
       return;
     }
     if (editingId === video.id) startNew();
-    setNotice({ tone: "success", text: "Deleted." });
+    setNotice({ tone: "success", text: "ลบแล้ว" });
     await loadVideos();
   }
 
@@ -253,14 +253,14 @@ function AdminPage() {
     <main className="admin-shell">
       <header className="admin-topbar">
         <div>
-          <h1>Admin</h1>
-          <p>Import, review, edit, search, and organize the video library.</p>
+          <h1>หลังบ้าน</h1>
+          <p>นำเข้าหนัง ตรวจสอบแหล่งวิดีโอตรง แก้ไขข้อมูล และจัดการคลังหนัง</p>
         </div>
         <div className="admin-stats">
-          <Stat label="Total" value={total} />
-          <Stat label="Categories" value={categories.length} />
+          <Stat label="ทั้งหมด" value={total} />
+          <Stat label="หมวดหมู่" value={categories.length} />
           <a className="nav-link" href="/">
-            View site
+            ดูหน้าเว็บ
           </a>
         </div>
       </header>
@@ -269,15 +269,15 @@ function AdminPage() {
         <div className="admin-left">
           <div className="panel import-panel">
             <div className="panel-head">
-              <h2>Import One Movie</h2>
+              <h2>นำเข้าหนังทีละเรื่อง</h2>
               <button className="subtle-button" onClick={startNew}>
-                New
+                เริ่มใหม่
               </button>
             </div>
             <div className="inspect-row">
-              <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste movie page URL" />
+              <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="วางลิงก์หน้าหนัง" />
               <button disabled={busy || !url.trim()} onClick={inspectSingle}>
-                Inspect
+                ตรวจสอบ
               </button>
             </div>
             <Progress progress={progress} busy={busy} status={inspectStatus} />
@@ -299,8 +299,8 @@ function AdminPage() {
         <div className="admin-right">
           <div className="panel preview-panel compact">
             <div className="panel-head">
-              <h2>Preview</h2>
-              {!form.sourceUrl && <span className="warn-label">No direct source</span>}
+              <h2>ตัวอย่างการเล่น</h2>
+              {!form.sourceUrl && <span className="warn-label">ยังไม่มีแหล่งวิดีโอตรง</span>}
             </div>
             <Player source={form.sourceUrl} sourceType={form.sourceType} />
           </div>
@@ -377,16 +377,16 @@ function SourcePicker({
     <div className="source-picker">
       <div className="chips">
         <span className={result.candidates.length ? "chip good" : "chip warn"}>
-          {result.candidates.length ? `${result.candidates.length} direct` : "no direct"}
+          {result.candidates.length ? `เจอแหล่งวิดีโอ ${result.candidates.length} รายการ` : "ไม่พบแหล่งวิดีโอตรง"}
         </span>
-        {!!result.fallbackEmbeds.length && <span className="chip warn">{result.fallbackEmbeds.length} fallback</span>}
+        {!!result.fallbackEmbeds.length && <span className="chip warn">ตัวสำรอง {result.fallbackEmbeds.length} รายการ</span>}
       </div>
-      {!!result.warnings.length && <div className="warning-text">{result.warnings.join(" ")}</div>}
+      {!!result.warnings.length && <div className="warning-text">{result.warnings.map(translateWarning).join(" ")}</div>}
       <div className="source-group">
-        <strong>Direct Video Sources</strong>
+        <strong>แหล่งวิดีโอตรง</strong>
         <div className="source-list">
           {directSources.length === 0 ? (
-            <div className="empty-state small danger-state">No direct video source found. This item cannot be saved yet.</div>
+            <div className="empty-state small danger-state">ยังไม่พบแหล่งวิดีโอตรง จึงยังบันทึกไม่ได้</div>
           ) : (
             directSources.map((candidate) => (
               <label key={candidate.url} className="source-row">
@@ -400,8 +400,8 @@ function SourcePicker({
       </div>
       {fallbackSources.length > 0 && (
         <div className="source-group fallback-group">
-          <strong>Fallback / Trailer embeds</strong>
-          <p>These are not direct video sources and will not be saved.</p>
+          <strong>ตัวเล่นสำรอง / ตัวอย่างหนัง</strong>
+          <p>รายการนี้ไม่ใช่แหล่งวิดีโอตรง ระบบแสดงไว้ให้ตรวจสอบเท่านั้น และจะไม่ใช้บันทึก</p>
           <div className="source-list">
             {fallbackSources.map((candidate) => (
               <div key={candidate.url} className="source-row muted">
@@ -434,46 +434,49 @@ function VideoEditor({
   return (
     <div className="panel editor-panel">
       <div className="panel-head">
-        <h2>{editingId ? `Edit Video #${editingId}` : "Metadata"}</h2>
-        <button onClick={onSave} disabled={!canSave}>
-          {editingId ? "Update" : "Save"}
+        <h2>{editingId ? `แก้ไขวิดีโอ #${editingId}` : "ข้อมูลวิดีโอ"}</h2>
+      </div>
+      <div className="save-callout">
+        <button className="primary-save" onClick={onSave} disabled={!canSave}>
+          {editingId ? "อัปเดตวิดีโอ" : "บันทึกวิดีโอ"}
         </button>
+        <span>{canSave ? "ตรวจข้อมูลให้ถูกต้องแล้วกดบันทึก" : "ต้องมีชื่อ, หน้าต้นทาง และแหล่งวิดีโอตรงก่อนบันทึก"}</span>
       </div>
       <div className="editor-grid">
         <label className="wide">
-          Title
+          ชื่อเรื่อง
           <input value={form.title} onChange={(event) => update("title", event.target.value)} />
         </label>
         <label>
-          Category
-          <input value={form.category} onChange={(event) => update("category", event.target.value)} placeholder="Action, Drama, Thai..." />
+          หมวดหมู่
+          <input value={form.category} onChange={(event) => update("category", event.target.value)} placeholder="แอ็กชัน, ดราม่า, หนังไทย..." />
         </label>
         <label>
-          Source Type
+          ประเภทแหล่งวิดีโอ
           <select value={form.sourceType} onChange={(event) => update("sourceType", event.target.value)}>
-            <option value="">none</option>
+            <option value="">ไม่มี</option>
             <option value="hls">hls</option>
             <option value="mp4">mp4</option>
             <option value="embed">embed</option>
           </select>
         </label>
         <label className="wide">
-          Thumbnail
+          รูปปก
           <input value={form.thumbnail} onChange={(event) => update("thumbnail", event.target.value)} />
         </label>
         <div className="thumb-review">
           <ImagePreview src={form.thumbnail} title={form.title} />
         </div>
         <label className="wide">
-          Description
+          รายละเอียด
           <textarea value={form.description} onChange={(event) => update("description", event.target.value)} />
         </label>
         <label className="wide">
-          Direct Video Source
+          แหล่งวิดีโอตรง
           <input value={form.sourceUrl} onChange={(event) => update("sourceUrl", event.target.value)} />
         </label>
         <label className="wide">
-          Page URL
+          URL หน้าต้นทาง
           <input value={form.pageUrl} onChange={(event) => update("pageUrl", event.target.value)} />
         </label>
       </div>
@@ -523,8 +526,8 @@ function LibraryPanel({
   return (
     <div className="panel library-panel">
       <div className="panel-head">
-        <h2>Library</h2>
-        <span className="count-pill">{total} videos</span>
+        <h2>คลังหนัง</h2>
+        <span className="count-pill">{total} เรื่อง</span>
       </div>
 
       <div className="library-toolbar">
@@ -534,10 +537,10 @@ function LibraryPanel({
           onKeyDown={(event) => {
             if (event.key === "Enter") onApplySearch();
           }}
-          placeholder="Search title, description, page URL"
+          placeholder="ค้นหาชื่อเรื่อง รายละเอียด หรือ URL"
         />
         <select value={categoryFilter} onChange={(event) => onCategoryFilter(event.target.value)}>
-          <option value="All">All categories</option>
+          <option value="All">ทุกหมวดหมู่</option>
           {categories.map((category) => (
             <option key={category.name} value={category.name}>
               {category.name} ({category.count})
@@ -545,10 +548,10 @@ function LibraryPanel({
           ))}
         </select>
         <button className="subtle-button" onClick={onApplySearch}>
-          Search
+          ค้นหา
         </button>
         <button className="subtle-button" onClick={onClearSearch}>
-          Clear
+          ล้าง
         </button>
       </div>
 
@@ -556,10 +559,10 @@ function LibraryPanel({
         <table className="video-table">
           <thead>
             <tr>
-              <th>Movie</th>
-              <th>Category</th>
-              <th>Source</th>
-              <th>Actions</th>
+              <th>หนัง</th>
+              <th>หมวดหมู่</th>
+              <th>แหล่งวิดีโอ</th>
+              <th>จัดการ</th>
             </tr>
           </thead>
           <tbody>
@@ -574,17 +577,17 @@ function LibraryPanel({
                     </div>
                   </div>
                 </td>
-                <td>{video.category || "Uncategorized"}</td>
+                <td>{displayCategory(video.category)}</td>
                 <td>
                   <span className={`source-badge ${video.sourceType === "embed" ? "warn" : ""}`}>{video.sourceType}</span>
                 </td>
                 <td>
                   <div className="row-actions">
                     <button className="subtle-button" onClick={() => onEdit(video)}>
-                      Edit
+                      แก้ไข
                     </button>
                     <button className="danger-button" onClick={() => onDelete(video)}>
-                      Delete
+                      ลบ
                     </button>
                   </div>
                 </td>
@@ -597,19 +600,19 @@ function LibraryPanel({
 
       <div className="pagination">
         <button className="subtle-button" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-          Previous
+          ก่อนหน้า
         </button>
         <span>
-          Page {page} / {pageCount}
+          หน้า {page} / {pageCount}
         </span>
         <button className="subtle-button" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
-          Next
+          ถัดไป
         </button>
         <select value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>
-          <option value={10}>10 / page</option>
-          <option value={20}>20 / page</option>
-          <option value={50}>50 / page</option>
-          <option value={100}>100 / page</option>
+          <option value={10}>10 รายการ/หน้า</option>
+          <option value={20}>20 รายการ/หน้า</option>
+          <option value={50}>50 รายการ/หน้า</option>
+          <option value={100}>100 รายการ/หน้า</option>
         </select>
       </div>
     </div>
@@ -623,20 +626,20 @@ function CatalogPage() {
   const [category, setCategory] = useState("All");
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("Loading...");
+  const [status, setStatus] = useState("กำลังโหลด...");
 
   useEffect(() => {
     loadCatalog();
   }, [category, search]);
 
   async function loadCatalog() {
-    setStatus("Loading...");
+    setStatus("กำลังโหลด...");
     try {
       const data = await fetchVideoPage({ page: 1, pageSize: 96, search, category });
       setVideos(data.videos);
       setCategories(data.categories);
       setTotal(data.total);
-      setStatus(data.total ? "" : "No videos found.");
+      setStatus(data.total ? "" : "ไม่พบหนัง");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -649,12 +652,12 @@ function CatalogPage() {
     <main className="netflix-shell">
       <header className="catalog-topbar">
         <a className="brand" href="/">
-          Stream Library
+          คลังหนัง
         </a>
         <nav className="category-menu">
           {["All", ...categories.map((item) => item.name)].map((item) => (
             <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
-              {item}
+              {item === "All" ? "ทั้งหมด" : displayCategory(item)}
             </button>
           ))}
         </nav>
@@ -665,10 +668,10 @@ function CatalogPage() {
             onKeyDown={(event) => {
               if (event.key === "Enter") setSearch(searchDraft.trim());
             }}
-            placeholder="Search movies"
+            placeholder="ค้นหาหนัง"
           />
           <a className="nav-link" href="/admin">
-            Admin
+            หลังบ้าน
           </a>
         </div>
       </header>
@@ -677,14 +680,14 @@ function CatalogPage() {
         <section className="hero-feature">
           <ImagePreview src={featured.thumbnail} title={featured.title} />
           <div className="hero-copy">
-            <span className="category-kicker">{featured.category || "Uncategorized"}</span>
+            <span className="category-kicker">{displayCategory(featured.category)}</span>
             <h1>{featured.title}</h1>
             <p>{featured.description}</p>
             <div className="hero-actions">
               <a className="play-link" href={`/watch/${featured.id}`}>
-                Play
+                เล่น
               </a>
-              <span>{total} titles available</span>
+              <span>มีทั้งหมด {total} เรื่อง</span>
             </div>
           </div>
         </section>
@@ -694,7 +697,7 @@ function CatalogPage() {
         {status && <div className="empty-state">{status}</div>}
         {Object.entries(grouped).map(([name, items]) => (
           <div className="rail" key={name}>
-            <h2>{name}</h2>
+            <h2>{displayCategory(name)}</h2>
             <div className="poster-row">
               {items.map((video) => (
                 <a className="poster-card" key={video.id} href={`/watch/${video.id}`}>
@@ -713,7 +716,7 @@ function CatalogPage() {
 function WatchPage() {
   const id = window.location.pathname.split("/").filter(Boolean).pop();
   const [video, setVideo] = useState<VideoRecord | undefined>();
-  const [status, setStatus] = useState("Loading...");
+  const [status, setStatus] = useState("กำลังโหลด...");
 
   useEffect(() => {
     fetch(`/api/videos/${encodeURIComponent(id || "")}`)
@@ -730,10 +733,10 @@ function WatchPage() {
     <main className="watch-shell">
       <nav className="watch-nav">
         <a className="nav-link" href="/">
-          Back
+          กลับ
         </a>
         <a className="nav-link" href="/admin">
-          Admin
+          หลังบ้าน
         </a>
       </nav>
       {video ? (
@@ -743,7 +746,7 @@ function WatchPage() {
           </div>
           <aside className="watch-meta">
             <ImagePreview src={video.thumbnail} title={video.title} />
-            <span className="category-kicker">{video.category || "Uncategorized"}</span>
+            <span className="category-kicker">{displayCategory(video.category)}</span>
             <h1>{video.title}</h1>
             <p>{video.description}</p>
           </aside>
@@ -757,7 +760,7 @@ function WatchPage() {
 
 function Player({ source, sourceType }: { source: string; sourceType: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [status, setStatus] = useState(source ? "Loading player..." : "No source selected.");
+  const [status, setStatus] = useState(source ? "กำลังโหลดเครื่องเล่น..." : "ยังไม่ได้เลือกแหล่งวิดีโอ");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -769,18 +772,18 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
     video.load();
 
     if (!source) {
-      setStatus("No source selected.");
+      setStatus("ยังไม่ได้เลือกแหล่งวิดีโอ");
       return;
     }
 
     if (sourceType === "embed" || source.includes("/embed")) {
-      setStatus("Loaded embedded fallback. It may include third-party UI or ads.");
+      setStatus("โหลด embedded fallback แล้ว อาจมี UI หรือโฆษณาจากเว็บภายนอก");
       return;
     }
 
-    const onLoaded = () => setStatus(`Loaded ${video.videoWidth}x${video.videoHeight}, ${formatDuration(video.duration)}.`);
-    const onPlaying = () => setStatus(`Playing ${video.videoWidth}x${video.videoHeight}, ${formatDuration(video.duration)}.`);
-    const onError = () => setStatus(video.error?.message ? `Playback error: ${video.error.message}` : "Playback error.");
+    const onLoaded = () => setStatus(`โหลดแล้ว ${video.videoWidth}x${video.videoHeight}, ${formatDuration(video.duration)}`);
+    const onPlaying = () => setStatus(`กำลังเล่น ${video.videoWidth}x${video.videoHeight}, ${formatDuration(video.duration)}`);
+    const onError = () => setStatus(video.error?.message ? `เล่นไม่ได้: ${video.error.message}` : "เล่นไม่ได้");
     video.addEventListener("loadedmetadata", onLoaded);
     video.addEventListener("playing", onPlaying);
     video.addEventListener("error", onError);
@@ -788,14 +791,14 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
     if (source.includes(".m3u8") && Hls.isSupported()) {
       hls = new Hls({ debug: false });
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) setStatus(`Fatal HLS error: ${data.type} / ${data.details}`);
+        if (data.fatal) setStatus(`HLS error: ${data.type} / ${data.details}`);
       });
       hls.loadSource(source);
       hls.attachMedia(video);
       video.play().catch(() => undefined);
     } else {
       video.src = source;
-      video.play().catch((error) => setStatus(`Playback failed: ${error.message}`));
+      video.play().catch((error) => setStatus(`เล่นไม่ได้: ${error.message}`));
     }
 
     return () => {
@@ -810,8 +813,8 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
     return (
       <div>
         <div className="player-empty">
-          <strong>No Direct Video Source</strong>
-          <span>Inspect found no playable direct source for this page.</span>
+          <strong>ยังไม่มีแหล่งวิดีโอตรง</strong>
+          <span>ระบบยังไม่พบแหล่งวิดีโอที่นำมาเล่นหรือบันทึกได้จากหน้านี้</span>
         </div>
         <div className="player-status">{status}</div>
       </div>
@@ -838,7 +841,7 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
 function ImagePreview({ src, title }: { src: string; title: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
-  if (!src || failed) return <div className="image-fallback">No image</div>;
+  if (!src || failed) return <div className="image-fallback">ไม่มีรูป</div>;
   return <img className="image-preview" src={src} alt={title} referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
 }
 
@@ -870,7 +873,7 @@ function recordToForm(video: VideoRecord): VideoForm {
     title: video.title,
     description: video.description,
     thumbnail: video.thumbnail,
-    category: video.category || "Uncategorized",
+    category: displayCategory(video.category),
     pageUrl: video.pageUrl,
     sourceUrl: video.sourceUrl,
     sourceType: video.sourceType
@@ -882,16 +885,16 @@ function getDefaultSource(result: InspectResult): Candidate | undefined {
 }
 
 function formatResultStatus(result: InspectResult): string {
-  if (result.candidates.length === 1) return "Ready to save.";
-  if (result.candidates.length > 1) return "Multiple direct video sources found. Select one before saving.";
-  if (result.fallbackEmbeds.length) return "No direct video source found. Fallback embed is available.";
-  return "No direct video source found.";
+  if (result.candidates.length === 1) return "พร้อมบันทึก";
+  if (result.candidates.length > 1) return "พบแหล่งวิดีโอตรงหลายรายการ กรุณาเลือกรายการที่ถูกต้อง";
+  if (result.fallbackEmbeds.length) return "ไม่พบแหล่งวิดีโอตรง พบเฉพาะตัวเล่นสำรอง";
+  return "ไม่พบแหล่งวิดีโอตรง";
 }
 
 function inferCategory(title: string, description: string) {
   const text = `${title} ${description}`.toLowerCase();
   const matches = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Fantasy", "Horror", "Romance", "Sci-Fi", "Thriller"];
-  return matches.find((item) => text.includes(item.toLowerCase())) ?? "Uncategorized";
+  return matches.find((item) => text.includes(item.toLowerCase())) ?? "ยังไม่จัดหมวด";
 }
 
 function groupByCategory(videos: VideoRecord[]) {
@@ -903,12 +906,34 @@ function groupByCategory(videos: VideoRecord[]) {
 }
 
 function formatDuration(value: number) {
-  if (!Number.isFinite(value)) return "unknown duration";
+  if (!Number.isFinite(value)) return "ไม่ทราบความยาว";
   const seconds = Math.round(value);
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const rest = seconds % 60;
   return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function displayCategory(value: string) {
+  if (!value || value === "Uncategorized") return "ยังไม่จัดหมวด";
+  return value;
+}
+
+function translateWarning(value: string) {
+  if (value.includes("No direct video source found")) return "ไม่พบแหล่งวิดีโอตรง";
+  if (value.includes("Multiple direct video sources")) return "พบแหล่งวิดีโอตรงหลายรายการ กรุณาเลือกก่อนบันทึก";
+  if (value.includes("Embedded fallback")) return "พบเฉพาะตัวเล่นสำรอง ซึ่งไม่ใช่แหล่งวิดีโอตรง และอาจมี UI/โฆษณาจากเว็บอื่น";
+  return value;
+}
+
+function translateError(value: string) {
+  if (value.includes("Title is required")) return "กรุณาระบุชื่อเรื่อง";
+  if (value.includes("Source URL is required")) return "กรุณาระบุแหล่งวิดีโอตรง";
+  if (value.includes("Page URL is required")) return "กรุณาระบุ URL หน้าต้นทาง";
+  if (value.includes("Blocked ad")) return "Source นี้เป็นโฆษณาหรือ tracker ระบบไม่อนุญาตให้บันทึก";
+  if (value.includes("Blocked sidecar")) return "Source นี้เป็น playlist ย่อย ระบบไม่อนุญาตให้บันทึก";
+  if (value.includes("Video not found")) return "ไม่พบวิดีโอ";
+  return value;
 }
 
 function useState<T>(initial: T | (() => T)): [T, React.Dispatch<React.SetStateAction<T>>];
