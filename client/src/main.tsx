@@ -149,7 +149,7 @@ function AdminPage() {
         category: inferCategory(data.metadata.title, data.metadata.description),
         pageUrl: data.pageUrl || url.trim(),
         sourceUrl: source?.url ?? "",
-        sourceType: source?.sourceType ?? "hls"
+        sourceType: source?.sourceType ?? ""
       });
       setEditingId(undefined);
       setProgress(100);
@@ -174,11 +174,15 @@ function AdminPage() {
 
   function selectSource(candidate: Candidate) {
     setSelectedSource(candidate);
-    setForm((current) => ({
-      ...current,
-      sourceUrl: candidate.url,
-      sourceType: candidate.sourceType
-    }));
+    setForm((current) =>
+      candidate.sourceType === "embed"
+        ? current
+        : {
+            ...current,
+            sourceUrl: candidate.url,
+            sourceType: candidate.sourceType
+          }
+    );
   }
 
   async function saveVideo() {
@@ -241,7 +245,8 @@ function AdminPage() {
   }
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const sources = inspectResult ? [...inspectResult.candidates, ...inspectResult.fallbackEmbeds] : [];
+  const directSources = inspectResult?.candidates ?? [];
+  const fallbackSources = inspectResult?.fallbackEmbeds ?? [];
   const canSave = Boolean(form.title.trim() && form.pageUrl.trim() && form.sourceUrl.trim() && form.sourceType !== "embed" && notice.tone !== "loading");
 
   return (
@@ -276,7 +281,15 @@ function AdminPage() {
               </button>
             </div>
             <Progress progress={progress} busy={busy} status={inspectStatus} />
-            {inspectResult && <SourcePicker result={inspectResult} sources={sources} selected={selectedSource} onSelect={selectSource} />}
+            {inspectResult && (
+              <SourcePicker
+                result={inspectResult}
+                directSources={directSources}
+                fallbackSources={fallbackSources}
+                selected={selectedSource}
+                onSelect={selectSource}
+              />
+            )}
           </div>
 
           <VideoEditor form={form} editingId={editingId} canSave={canSave} onChange={setForm} onSave={saveVideo} />
@@ -287,7 +300,7 @@ function AdminPage() {
           <div className="panel preview-panel compact">
             <div className="panel-head">
               <h2>Preview</h2>
-              {form.sourceType === "embed" && <span className="warn-label">Fallback only</span>}
+              {!form.sourceUrl && <span className="warn-label">No direct source</span>}
             </div>
             <Player source={form.sourceUrl} sourceType={form.sourceType} />
           </div>
@@ -349,12 +362,14 @@ function Progress({ progress, busy, status }: { progress: number; busy: boolean;
 
 function SourcePicker({
   result,
-  sources,
+  directSources,
+  fallbackSources,
   selected,
   onSelect
 }: {
   result: InspectResult;
-  sources: Candidate[];
+  directSources: Candidate[];
+  fallbackSources: Candidate[];
   selected?: Candidate;
   onSelect: (candidate: Candidate) => void;
 }) {
@@ -367,19 +382,37 @@ function SourcePicker({
         {!!result.fallbackEmbeds.length && <span className="chip warn">{result.fallbackEmbeds.length} fallback</span>}
       </div>
       {!!result.warnings.length && <div className="warning-text">{result.warnings.join(" ")}</div>}
-      <div className="source-list">
-        {sources.length === 0 ? (
-          <div className="empty-state small">No source found.</div>
-        ) : (
-          sources.map((candidate) => (
-            <label key={candidate.url} className={`source-row ${candidate.sourceType === "embed" ? "muted" : ""}`}>
-              <input type="radio" checked={selected?.url === candidate.url} onChange={() => onSelect(candidate)} />
-              <span>{candidate.sourceType}</span>
-              <code>{candidate.url}</code>
-            </label>
-          ))
-        )}
+      <div className="source-group">
+        <strong>Direct Video Sources</strong>
+        <div className="source-list">
+          {directSources.length === 0 ? (
+            <div className="empty-state small danger-state">No direct video source found. This item cannot be saved yet.</div>
+          ) : (
+            directSources.map((candidate) => (
+              <label key={candidate.url} className="source-row">
+                <input type="radio" checked={selected?.url === candidate.url} onChange={() => onSelect(candidate)} />
+                <span>{candidate.sourceType}</span>
+                <code>{candidate.url}</code>
+              </label>
+            ))
+          )}
+        </div>
       </div>
+      {fallbackSources.length > 0 && (
+        <div className="source-group fallback-group">
+          <strong>Fallback / Trailer embeds</strong>
+          <p>These are not direct video sources and will not be saved.</p>
+          <div className="source-list">
+            {fallbackSources.map((candidate) => (
+              <div key={candidate.url} className="source-row muted">
+                <span className="radio-placeholder" />
+                <span>{candidate.sourceType}</span>
+                <code>{candidate.url}</code>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -418,6 +451,7 @@ function VideoEditor({
         <label>
           Source Type
           <select value={form.sourceType} onChange={(event) => update("sourceType", event.target.value)}>
+            <option value="">none</option>
             <option value="hls">hls</option>
             <option value="mp4">mp4</option>
             <option value="embed">embed</option>
@@ -771,6 +805,18 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
       video.removeEventListener("error", onError);
     };
   }, [source, sourceType]);
+
+  if (!source) {
+    return (
+      <div>
+        <div className="player-empty">
+          <strong>No Direct Video Source</strong>
+          <span>Inspect found no playable direct source for this page.</span>
+        </div>
+        <div className="player-status">{status}</div>
+      </div>
+    );
+  }
 
   if (source && (sourceType === "embed" || source.includes("/embed"))) {
     return (

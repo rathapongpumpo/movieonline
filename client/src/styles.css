@@ -32,7 +32,9 @@ button {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  background: #3a2430;
+  color: #8d98aa;
+  opacity: 1;
 }
 
 input,
@@ -193,12 +195,30 @@ p {
 }
 
 .player-video,
-.player-frame {
+.player-frame,
+.player-empty {
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 0;
   border-radius: 8px;
   background: #000;
+}
+
+.player-empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px dashed #5b2630;
+  background: #130e13;
+  color: #ffb4b4;
+  text-align: center;
+}
+
+.player-empty span {
+  max-width: 360px;
+  color: #b9c3d2;
+  font-size: 14px;
 }
 
 .player-status {
@@ -284,6 +304,26 @@ p {
   gap: 8px;
 }
 
+.source-group {
+  display: grid;
+  gap: 8px;
+}
+
+.source-group > strong {
+  color: #f5f7fb;
+  font-size: 14px;
+}
+
+.fallback-group {
+  border-top: 1px solid #2b3341;
+  padding-top: 10px;
+}
+
+.fallback-group p {
+  color: #ffcf8a;
+  font-size: 13px;
+}
+
 .source-row {
   display: grid;
   grid-template-columns: auto 60px 1fr;
@@ -296,12 +336,28 @@ p {
 }
 
 .source-row.muted {
-  opacity: 0.78;
+  border-color: #5a4320;
+  background: rgba(217, 119, 6, 0.08);
+  opacity: 0.86;
 }
 
 .source-row input {
   width: 18px;
   height: 18px;
+}
+
+.radio-placeholder {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid #8d98aa;
+  opacity: 0.55;
+}
+
+.danger-state {
+  border-color: #7f1d1d;
+  background: rgba(127, 29, 29, 0.18);
+  color: #ffb4b4;
 }
 
 code {
