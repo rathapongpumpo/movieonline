@@ -288,7 +288,12 @@ function AdminPage() {
           </div>
         </div>
 
-        <MetadataPanel result={active} source={activeSource} onSave={saveActive} disabled={!activeSource || saveState === "saving"} />
+        <MetadataPanel
+          result={active}
+          source={activeSource}
+          onSave={saveActive}
+          disabled={!activeSource || activeSource.sourceType === "embed" || saveState === "saving"}
+        />
       </section>
 
       {saveMessage && <div className={`toast ${saveState}`}>{saveMessage}</div>}
@@ -568,7 +573,7 @@ function ImagePreview({ src, title }: { src: string; title: string }) {
 }
 
 function getDefaultSource(result: InspectResult): Candidate | undefined {
-  return result.candidates[0] ?? result.fallbackEmbeds[0];
+  return result.candidates[0];
 }
 
 function formatResultStatus(result: InspectResult): string {

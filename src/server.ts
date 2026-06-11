@@ -161,14 +161,21 @@ function isDirectVideoSource(item: MediaItem): boolean {
 
 function isPlayableSource(item: MediaItem): boolean {
   if (item.finalUrl.startsWith("blob:")) return false;
+  if (isBlockedMediaUrl(item.finalUrl)) return false;
   if (item.displayedAs.toLowerCase().includes("iframe")) return true;
   if (/\/hdr__[^/]+\.bin(?:\?|$)/.test(item.finalUrl)) return false;
   if (/\/s_\d+\.bin(?:\?|$)/.test(item.finalUrl)) return false;
+  if (isLikelySidecarPlaylist(item.finalUrl)) return false;
   return isDirectVideoSource(item);
 }
 
 function buildAdminInspectResult(result: InspectResult) {
-  let allSources = uniqueBy(result.media.filter(isPlayableSource), (item) => item.finalUrl).map((item) => ({
+  let allSources = uniqueBy(
+    result.media
+      .filter(isPlayableSource)
+      .sort((a, b) => scoreMediaSource(b) - scoreMediaSource(a)),
+    (item) => item.finalUrl
+  ).map((item) => ({
     url: item.finalUrl,
     kind: item.kind,
     foundBy: item.foundBy,
@@ -206,6 +213,7 @@ function validateVideoInput(value: Record<string, unknown>): VideoInput {
   const pageUrl = String(value.pageUrl ?? "").trim();
   if (!title) throw new Error("Title is required");
   if (!sourceUrl) throw new Error("Source URL is required");
+  if (isBlockedMediaUrl(sourceUrl)) throw new Error("Blocked ad/tracker media source");
   if (!pageUrl) throw new Error("Page URL is required");
   return {
     title,
@@ -232,6 +240,45 @@ function isYoutubeUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, "");
     return hostname === "youtube.com" || hostname === "youtu.be" || hostname.endsWith(".youtube.com");
+  } catch {
+    return false;
+  }
+}
+
+function scoreMediaSource(item: MediaItem): number {
+  let score = 0;
+  const url = item.finalUrl.toLowerCase();
+  const displayedAs = item.displayedAs.toLowerCase();
+  if (!displayedAs.includes("iframe")) score += 100;
+  if (item.kind === "stream") score += 40;
+  if (item.kind === "video") score += 30;
+  if (url.includes(".m3u8")) score += 30;
+  if (url.endsWith("/playlist.m3u8") || url.includes("/playlist.m3u8?")) score += 50;
+  if (item.foundBy === "dom") score += 10;
+  if (displayedAs.includes("onclick") || displayedAs === "media" || displayedAs === "xhr") score += 10;
+  if (/\/tracks-[^/]+\/|\/audio\/|mono\.|subtitle|captions|\/hlsr\//.test(url)) score -= 80;
+  return score;
+}
+
+function isLikelySidecarPlaylist(url: string): boolean {
+  const normalized = url.toLowerCase();
+  return normalized.includes(".m3u8") && /\/tracks-[^/]+\/|\/audio\/|mono\.|subtitle|captions/.test(normalized);
+}
+
+function isBlockedMediaUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const blockedHosts = [
+      "ads.",
+      "ad.",
+      "doubleclick.net",
+      "googlesyndication.com",
+      "googleadservices.com",
+      "p2p-cdnmovie.xyz"
+    ];
+    return blockedHosts.some((blocked) => host === blocked || host.includes(blocked)) || /(^|\/)(ads?|banner|promo|pop|preroll)(\/|[-_.])/.test(path);
   } catch {
     return false;
   }
