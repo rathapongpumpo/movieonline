@@ -4,6 +4,12 @@ export type InspectOptions = {
   maxPages?: number;
 };
 
+export type DiscoveredPage = {
+  url: string;
+  text: string;
+  score: number;
+};
+
 export type MediaItem = {
   pageUrl: string;
   kind: "image" | "video" | "stream" | "background" | "unknown";
@@ -80,6 +86,44 @@ type DomExtraction = {
 const IMAGE_TYPES = ["image/"];
 const VIDEO_TYPES = ["video/", "application/vnd.apple.mpegurl", "application/x-mpegurl", "application/dash+xml"];
 const MEDIA_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif", ".mp4", ".webm", ".mov", ".m3u8", ".mpd"];
+
+export async function discoverCandidatePages(rawUrl: string, limit = 24): Promise<DiscoveredPage[]> {
+  const startUrl = normalizeInputUrl(rawUrl);
+  const start = new URL(startUrl);
+  let browser: Browser | undefined;
+
+  try {
+    browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      viewport: { width: 1366, height: 900 },
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 SiteSourceInspector/0.1"
+    });
+    const page = await context.newPage();
+    await gotoInspectablePage(page, startUrl);
+
+    const links = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]")).map((anchor) => ({
+        text: (anchor.innerText || anchor.getAttribute("aria-label") || anchor.title || "").replace(/\s+/g, " ").trim(),
+        url: anchor.href || anchor.getAttribute("href") || ""
+      }))
+    );
+
+    await context.close();
+
+    const candidates = links
+      .map((link) => {
+        const url = normalizeComparableUrl(resolveUrl(link.url, startUrl));
+        return { url, text: cleanText(link.text), score: scoreCandidatePage(url, link.text, start) };
+      })
+      .filter((link) => link.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return uniqueBy(candidates, (item) => item.url).slice(0, clamp(limit, 1, 100));
+  } finally {
+    await browser?.close();
+  }
+}
 
 export async function inspectSite(rawUrl: string, options: InspectOptions = {}): Promise<InspectResult> {
   const startUrl = normalizeInputUrl(rawUrl);
@@ -162,8 +206,7 @@ async function inspectPage(page: Page, pageUrl: string, start: URL): Promise<Pag
     });
   });
 
-  await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
-  await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => undefined);
+  await gotoInspectablePage(page, pageUrl);
   await page.evaluate("globalThis.__name = globalThis.__name || ((fn) => fn)");
   await activatePlayers(page);
 
@@ -395,6 +438,12 @@ async function extractDom(page: Page): Promise<DomExtraction> {
   });
 }
 
+async function gotoInspectablePage(page: Page, url: string) {
+  await page.goto(url, { waitUntil: "commit", timeout: 30000 });
+  await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => undefined);
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => undefined);
+}
+
 async function activatePlayers(page: Page): Promise<void> {
   const selectors = [
     "video",
@@ -604,4 +653,32 @@ function uniqueBy<T>(items: T[], getKey: (item: T) => string): T[] {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function scoreCandidatePage(rawUrl: string, text: string, start: URL): number {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return 0;
+  }
+
+  if (!isInternalUrl(url.href, start)) return 0;
+  if (url.pathname === "/" || url.pathname === "") return 0;
+  if (url.searchParams.size > 0) return 0;
+  if (/\.(jpg|jpeg|png|gif|webp|svg|css|js|json|xml|mp4|m3u8|mpd|zip|rar|pdf)$/i.test(url.pathname)) return 0;
+
+  const lowerPath = url.pathname.toLowerCase();
+  const blocked = ["/category/", "/tag/", "/author/", "/page/", "/search", "/wp-", "/feed", "/privacy", "/contact", "/terms", "/login"];
+  if (blocked.some((part) => lowerPath.includes(part))) return 0;
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  let score = 10;
+  if (segments.length === 1) score += 20;
+  if (/(19|20)\d{2}/.test(url.pathname) || /(19|20)\d{2}/.test(text)) score += 25;
+  if (text.trim().length > 0) score += 10;
+  if (/ดู|หนัง|movie|film|episode|ซีรี/.test(text.toLowerCase())) score += 5;
+  if (segments.length > 3) score -= 20;
+
+  return score;
 }

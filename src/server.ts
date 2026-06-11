@@ -1,22 +1,30 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createVideo, getVideo, listVideos, type VideoInput } from "./db.js";
-import { inspectSite, type MediaItem } from "./inspector.js";
+import { discoverCandidatePages, inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const reactRoot = path.join(root, "public", "react");
+const reactIndex = path.join(reactRoot, "index.html");
 
 app.use(express.json({ limit: "1mb" }));
+app.use(express.static(reactRoot));
 app.use(express.static(path.join(root, "public")));
 
 app.get("/admin", (_req, res) => {
-  res.sendFile(path.join(root, "public", "admin.html"));
+  res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "admin.html"));
 });
 
 app.get("/watch/:id", (_req, res) => {
-  res.sendFile(path.join(root, "public", "watch.html"));
+  res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "watch.html"));
+});
+
+app.get("/", (_req, res) => {
+  res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "index.html"));
 });
 
 app.post("/api/inspect", async (req, res) => {
@@ -36,40 +44,83 @@ app.post("/api/admin/inspect", async (req, res) => {
   try {
     const url = String(req.body?.url ?? "");
     const result = await inspectSite(url, { maxPages: 1 });
-    let allSources = uniqueBy(result.media.filter(isPlayableSource), (item) => item.finalUrl).map((item) => ({
-      url: item.finalUrl,
-      kind: item.kind,
-      foundBy: item.foundBy,
-      displayedAs: item.displayedAs,
-      sourceType: item.displayedAs.toLowerCase().includes("iframe") ? "embed" : item.finalUrl.includes(".m3u8") ? "hls" : "mp4",
-      contentType: item.contentType ?? "",
-      probe: item.probe
-    }));
-    if (allSources.some((candidate) => !isYoutubeUrl(candidate.url))) {
-      allSources = allSources.filter((candidate) => !isYoutubeUrl(candidate.url));
-    }
-    const candidates = allSources.filter((candidate) => candidate.sourceType !== "embed");
-    const fallbackEmbeds = allSources.filter((candidate) => candidate.sourceType === "embed");
-
-    res.json({
-      pageUrl: result.startUrl,
-      metadata: result.metadata,
-      candidates,
-      fallbackEmbeds,
-      needsSelection: candidates.length !== 1,
-      warnings: [
-        ...(candidates.length === 0 ? ["No direct video source found."] : []),
-        ...(candidates.length > 1 ? ["Multiple direct video sources found. Select one before saving."] : []),
-        ...(candidates.length === 0 && fallbackEmbeds.length > 0
-          ? ["Embedded fallback was found, but it is not a direct video source and may include third-party UI or ads."]
-          : []),
-        ...result.errors
-      ]
-    });
+    res.json(buildAdminInspectResult(result));
   } catch (error) {
     res.status(400).json({
       error: error instanceof Error ? error.message : String(error)
     });
+  }
+});
+
+app.post("/api/admin/bulk-inspect", async (req, res) => {
+  res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  const write = (payload: unknown) => res.write(`${JSON.stringify(payload)}\n`);
+
+  try {
+    const url = String(req.body?.url ?? "");
+    const limit = clamp(Number(req.body?.limit ?? 12), 1, 50);
+    write({ type: "status", stage: "discover", progress: 3, message: "Discovering movie pages..." });
+
+    const discovered = await discoverCandidatePages(url, limit);
+    write({
+      type: "discovered",
+      stage: "discover",
+      progress: 10,
+      total: discovered.length,
+      pages: discovered
+    });
+
+    if (discovered.length === 0) {
+      write({ type: "done", progress: 100, results: [] });
+      res.end();
+      return;
+    }
+
+    const results = [];
+    for (let index = 0; index < discovered.length; index += 1) {
+      const page = discovered[index];
+      const baseProgress = 10 + Math.round((index / discovered.length) * 85);
+      write({
+        type: "status",
+        stage: "inspect",
+        progress: baseProgress,
+        current: index + 1,
+        total: discovered.length,
+        url: page.url,
+        message: `Inspecting ${index + 1}/${discovered.length}`
+      });
+
+      try {
+        const result = await inspectSite(page.url, { maxPages: 1 });
+        const item = buildAdminInspectResult(result);
+        results.push(item);
+        write({
+          type: "result",
+          progress: 10 + Math.round(((index + 1) / discovered.length) * 85),
+          current: index + 1,
+          total: discovered.length,
+          result: item
+        });
+      } catch (error) {
+        write({
+          type: "error",
+          progress: 10 + Math.round(((index + 1) / discovered.length) * 85),
+          current: index + 1,
+          total: discovered.length,
+          url: page.url,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    write({ type: "done", progress: 100, total: discovered.length, results });
+  } catch (error) {
+    write({ type: "fatal", progress: 100, error: error instanceof Error ? error.message : String(error) });
+  } finally {
+    res.end();
   }
 });
 
@@ -116,6 +167,39 @@ function isPlayableSource(item: MediaItem): boolean {
   return isDirectVideoSource(item);
 }
 
+function buildAdminInspectResult(result: InspectResult) {
+  let allSources = uniqueBy(result.media.filter(isPlayableSource), (item) => item.finalUrl).map((item) => ({
+    url: item.finalUrl,
+    kind: item.kind,
+    foundBy: item.foundBy,
+    displayedAs: item.displayedAs,
+    sourceType: item.displayedAs.toLowerCase().includes("iframe") ? "embed" : item.finalUrl.includes(".m3u8") ? "hls" : "mp4",
+    contentType: item.contentType ?? "",
+    probe: item.probe
+  }));
+  if (allSources.some((candidate) => !isYoutubeUrl(candidate.url))) {
+    allSources = allSources.filter((candidate) => !isYoutubeUrl(candidate.url));
+  }
+  const candidates = allSources.filter((candidate) => candidate.sourceType !== "embed");
+  const fallbackEmbeds = allSources.filter((candidate) => candidate.sourceType === "embed");
+
+  return {
+    pageUrl: result.startUrl,
+    metadata: result.metadata,
+    candidates,
+    fallbackEmbeds,
+    needsSelection: candidates.length !== 1,
+    warnings: [
+      ...(candidates.length === 0 ? ["No direct video source found."] : []),
+      ...(candidates.length > 1 ? ["Multiple direct video sources found. Select one before saving."] : []),
+      ...(candidates.length === 0 && fallbackEmbeds.length > 0
+        ? ["Embedded fallback was found, but it is not a direct video source and may include third-party UI or ads."]
+        : []),
+      ...result.errors
+    ]
+  };
+}
+
 function validateVideoInput(value: Record<string, unknown>): VideoInput {
   const title = String(value.title ?? "").trim();
   const sourceUrl = String(value.sourceUrl ?? "").trim();
@@ -151,4 +235,8 @@ function isYoutubeUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
