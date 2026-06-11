@@ -602,7 +602,7 @@ function LibraryPanel({
           <tbody>
             {videos.map((video) => (
               <tr key={video.id} className={activeId === video.id ? "active" : ""}>
-                <td>
+                <td data-label="หนัง">
                   <div className="movie-cell">
                     <ImagePreview src={video.thumbnail} title={video.title} />
                     <div>
@@ -611,11 +611,11 @@ function LibraryPanel({
                     </div>
                   </div>
                 </td>
-                <td>{displayCategory(video.category)}</td>
-                <td>
+                <td data-label="หมวดหมู่">{displayCategory(video.category)}</td>
+                <td data-label="แหล่งวิดีโอ">
                   <span className={`source-badge ${video.sourceType === "embed" ? "warn" : ""}`}>{video.sourceType}</span>
                 </td>
-                <td>
+                <td data-label="จัดการ">
                   <div className="row-actions">
                     <button className="subtle-button" onClick={() => onEdit(video)}>
                       แก้ไข
