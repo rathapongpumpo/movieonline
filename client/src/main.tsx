@@ -30,13 +30,34 @@ type VideoRecord = {
   title: string;
   description: string;
   thumbnail: string;
+  category: string;
   pageUrl: string;
   sourceUrl: string;
   sourceType: string;
   duration: number | null;
 };
 
+type VideoForm = {
+  title: string;
+  description: string;
+  thumbnail: string;
+  category: string;
+  pageUrl: string;
+  sourceUrl: string;
+  sourceType: string;
+};
+
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+const emptyForm: VideoForm = {
+  title: "",
+  description: "",
+  thumbnail: "",
+  category: "Uncategorized",
+  pageUrl: "",
+  sourceUrl: "",
+  sourceType: "hls"
+};
 
 function App() {
   const path = window.location.pathname;
@@ -46,20 +67,27 @@ function App() {
 }
 
 function AdminPage() {
-  const [mode, setMode] = useState<"single" | "bulk">("single");
   const [url, setUrl] = useState("");
-  const [limit, setLimit] = useState(12);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
-  const [results, setResults] = useState<InspectResult[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [selected, setSelected] = useState<Record<number, Candidate | undefined>>({});
+  const [inspectResult, setInspectResult] = useState<InspectResult | undefined>();
+  const [selectedSource, setSelectedSource] = useState<Candidate | undefined>();
+  const [form, setForm] = useState<VideoForm>(emptyForm);
+  const [videos, setVideos] = useState<VideoRecord[]>([]);
+  const [editingId, setEditingId] = useState<number | undefined>();
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveMessage, setSaveMessage] = useState("");
 
-  const active = results[activeIndex];
-  const activeSource = active ? selected[activeIndex] ?? getDefaultSource(active) : undefined;
+  useEffect(() => {
+    loadVideos();
+  }, []);
+
+  async function loadVideos() {
+    const response = await fetch("/api/videos");
+    const data = await response.json();
+    setVideos(data.videos || []);
+  }
 
   async function inspectSingle() {
     if (!url.trim()) return;
@@ -73,63 +101,22 @@ function AdminPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Inspect failed");
-      setProgress(100);
-      setResults([data]);
-      setActiveIndex(0);
-      setSelected({ 0: getDefaultSource(data) });
-      setStatus(formatResultStatus(data));
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  }
 
-  async function inspectBulk() {
-    if (!url.trim()) return;
-    resetRun("Discovering movie pages...");
-    const nextResults: InspectResult[] = [];
-    try {
-      const response = await fetch("/api/admin/bulk-inspect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), limit })
+      const source = getDefaultSource(data);
+      setProgress(100);
+      setInspectResult(data);
+      setSelectedSource(source);
+      setForm({
+        title: data.metadata.title || "",
+        description: data.metadata.description || "",
+        thumbnail: data.metadata.thumbnail || "",
+        category: inferCategory(data.metadata.title, data.metadata.description),
+        pageUrl: data.pageUrl || url.trim(),
+        sourceUrl: source?.url ?? "",
+        sourceType: source?.sourceType ?? "hls"
       });
-      if (!response.body) throw new Error("Streaming response is not available");
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const event = JSON.parse(line);
-          if (typeof event.progress === "number") setProgress(event.progress);
-          if (event.message) setStatus(event.message);
-          if (event.type === "discovered") setStatus(`Found ${event.total} candidate page(s).`);
-          if (event.type === "result") {
-            nextResults.push(event.result);
-            setResults([...nextResults]);
-            setSelected((current) => ({
-              ...current,
-              [nextResults.length - 1]: getDefaultSource(event.result)
-            }));
-            setActiveIndex(nextResults.length - 1);
-          }
-          if (event.type === "error") setStatus(event.error);
-          if (event.type === "fatal") throw new Error(event.error);
-        }
-      }
-
-      setProgress(100);
-      setStatus(nextResults.length ? `Completed ${nextResults.length} page(s).` : "No movie pages found.");
+      setEditingId(undefined);
+      setStatus(formatResultStatus(data));
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
@@ -141,159 +128,149 @@ function AdminPage() {
     setBusy(true);
     setProgress(4);
     setStatus(message);
-    setResults([]);
-    setActiveIndex(0);
-    setSelected({});
+    setInspectResult(undefined);
+    setSelectedSource(undefined);
     setSaveState("idle");
     setSaveMessage("");
   }
 
-  async function saveActive() {
-    if (!active || !activeSource) return;
+  function startNew() {
+    setUrl("");
+    setProgress(0);
+    setStatus("");
+    setInspectResult(undefined);
+    setSelectedSource(undefined);
+    setForm(emptyForm);
+    setEditingId(undefined);
+    setSaveState("idle");
+    setSaveMessage("");
+  }
+
+  function selectSource(candidate: Candidate) {
+    setSelectedSource(candidate);
+    setForm((current) => ({
+      ...current,
+      sourceUrl: candidate.url,
+      sourceType: candidate.sourceType
+    }));
+  }
+
+  async function saveVideo() {
     setSaveState("saving");
-    setSaveMessage("Saving video...");
+    setSaveMessage(editingId ? "Updating video..." : "Saving video...");
     try {
-      const response = await fetch("/api/videos", {
-        method: "POST",
+      const response = await fetch(editingId ? `/api/videos/${editingId}` : "/api/videos", {
+        method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: active.metadata.title,
-          description: active.metadata.description,
-          thumbnail: active.metadata.thumbnail,
-          pageUrl: active.pageUrl,
-          sourceUrl: activeSource.url,
-          sourceType: activeSource.sourceType,
-          duration: null
-        })
+        body: JSON.stringify(form)
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Save failed");
+      await loadVideos();
+      setEditingId(data.video.id);
       setSaveState("saved");
-      setSaveMessage(`Saved. Open /watch/${data.video.id}`);
+      setSaveMessage(editingId ? "Updated." : `Saved. Open /watch/${data.video.id}`);
     } catch (error) {
       setSaveState("error");
       setSaveMessage(error instanceof Error ? error.message : String(error));
     }
   }
 
-  async function saveAllReady() {
-    const ready = results
-      .map((result, index) => ({ result, source: selected[index] ?? getDefaultSource(result) }))
-      .filter((item): item is { result: InspectResult; source: Candidate } => Boolean(item.source));
-    if (!ready.length) return;
-
-    setSaveState("saving");
-    setSaveMessage(`Saving ${ready.length} video(s)...`);
-    try {
-      for (const item of ready) {
-        await fetch("/api/videos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: item.result.metadata.title,
-            description: item.result.metadata.description,
-            thumbnail: item.result.metadata.thumbnail,
-            pageUrl: item.result.pageUrl,
-            sourceUrl: item.source.url,
-            sourceType: item.source.sourceType,
-            duration: null
-          })
-        });
-      }
-      setSaveState("saved");
-      setSaveMessage(`Saved ${ready.length} video(s).`);
-    } catch (error) {
+  async function deleteVideoRecord(video: VideoRecord) {
+    if (!window.confirm(`Delete "${video.title}"?`)) return;
+    const response = await fetch(`/api/videos/${video.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
       setSaveState("error");
-      setSaveMessage(error instanceof Error ? error.message : String(error));
+      setSaveMessage(data.error || "Delete failed");
+      return;
     }
+    await loadVideos();
+    if (editingId === video.id) startNew();
+    setSaveState("saved");
+    setSaveMessage("Deleted.");
   }
+
+  function editVideo(video: VideoRecord) {
+    setEditingId(video.id);
+    setInspectResult(undefined);
+    setSelectedSource({
+      url: video.sourceUrl,
+      kind: "video",
+      foundBy: "dom",
+      displayedAs: video.sourceType,
+      sourceType: video.sourceType
+    });
+    setForm({
+      title: video.title,
+      description: video.description,
+      thumbnail: video.thumbnail,
+      category: video.category || "Uncategorized",
+      pageUrl: video.pageUrl,
+      sourceUrl: video.sourceUrl,
+      sourceType: video.sourceType
+    });
+    setProgress(0);
+    setStatus("Editing saved video.");
+    setSaveState("idle");
+    setSaveMessage("");
+  }
+
+  const sources = inspectResult ? [...inspectResult.candidates, ...inspectResult.fallbackEmbeds] : [];
+  const canSave = Boolean(form.title.trim() && form.pageUrl.trim() && form.sourceUrl.trim() && form.sourceType !== "embed" && saveState !== "saving");
 
   return (
     <main className="admin-shell">
       <header className="topbar">
         <div>
           <h1>Admin</h1>
-          <p>Inspect one page or crawl a site homepage for movie detail pages.</p>
+          <p>Inspect one movie page, confirm metadata, then save or edit the library.</p>
         </div>
         <a className="nav-link" href="/">
           View site
         </a>
       </header>
 
-      <section className="admin-hero">
+      <section className="admin-hero single-admin">
         <div className="panel import-panel">
-          <div className="mode-tabs">
-            <button className={mode === "single" ? "active" : ""} onClick={() => setMode("single")}>
-              Single URL
-            </button>
-            <button className={mode === "bulk" ? "active" : ""} onClick={() => setMode("bulk")}>
-              Crawl site
+          <div className="panel-head">
+            <h2>Import</h2>
+            <button className="subtle-button" onClick={startNew}>
+              New
             </button>
           </div>
           <div className="inspect-row">
-            <input
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder={mode === "single" ? "Paste movie page URL" : "Paste site homepage URL"}
-            />
-            {mode === "bulk" && (
-              <input
-                className="limit-input"
-                type="number"
-                min={1}
-                max={50}
-                value={limit}
-                onChange={(event) => setLimit(Number(event.target.value))}
-                title="Max pages"
-              />
-            )}
-            <button disabled={busy} onClick={mode === "single" ? inspectSingle : inspectBulk}>
+            <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="Paste movie page URL" />
+            <button disabled={busy} onClick={inspectSingle}>
               Inspect
             </button>
           </div>
           <Progress progress={progress} busy={busy} status={status} />
+          {inspectResult && (
+            <SourcePicker
+              result={inspectResult}
+              sources={sources}
+              selected={selectedSource}
+              onSelect={selectSource}
+            />
+          )}
         </div>
 
         <div className="panel preview-panel">
           <h2>Preview</h2>
-          <Player source={activeSource?.url ?? ""} sourceType={activeSource?.sourceType ?? ""} />
+          <Player source={form.sourceUrl} sourceType={form.sourceType} />
         </div>
       </section>
 
-      <section className="workspace-grid">
-        <div className="panel results-panel">
-          <div className="panel-head">
-            <h2>Inspect Results</h2>
-            {results.length > 1 && (
-              <button className="subtle-button" onClick={saveAllReady} disabled={saveState === "saving"}>
-                Save ready
-              </button>
-            )}
-          </div>
-          <div className="result-list">
-            {results.length === 0 ? (
-              <div className="empty-state">No inspected results yet.</div>
-            ) : (
-              results.map((result, index) => (
-                <ResultCard
-                  key={`${result.pageUrl}-${index}`}
-                  result={result}
-                  active={index === activeIndex}
-                  selected={selected[index] ?? getDefaultSource(result)}
-                  onClick={() => setActiveIndex(index)}
-                  onSelect={(candidate) => setSelected((current) => ({ ...current, [index]: candidate }))}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        <MetadataPanel
-          result={active}
-          source={activeSource}
-          onSave={saveActive}
-          disabled={!activeSource || activeSource.sourceType === "embed" || saveState === "saving"}
+      <section className="workspace-grid admin-workspace">
+        <VideoFormPanel
+          form={form}
+          editingId={editingId}
+          onChange={setForm}
+          onSave={saveVideo}
+          canSave={canSave}
         />
+        <VideoManager videos={videos} activeId={editingId} onEdit={editVideo} onDelete={deleteVideoRecord} />
       </section>
 
       {saveMessage && <div className={`toast ${saveState}`}>{saveMessage}</div>}
@@ -315,103 +292,150 @@ function Progress({ progress, busy, status }: { progress: number; busy: boolean;
   );
 }
 
-function ResultCard({
+function SourcePicker({
   result,
-  active,
+  sources,
   selected,
-  onClick,
   onSelect
 }: {
   result: InspectResult;
-  active: boolean;
+  sources: Candidate[];
   selected?: Candidate;
-  onClick: () => void;
   onSelect: (candidate: Candidate) => void;
 }) {
-  const sources = [...result.candidates, ...result.fallbackEmbeds];
   return (
-    <article className={`result-card ${active ? "active" : ""}`} onClick={onClick}>
-      <ImagePreview src={result.metadata.thumbnail} title={result.metadata.title} />
-      <div className="result-body">
-        <h3>{result.metadata.title || "Untitled"}</h3>
-        <p>{result.metadata.description || "No description"}</p>
-        <div className="chips">
-          <span className={result.candidates.length ? "chip good" : "chip warn"}>
-            {result.candidates.length ? `${result.candidates.length} direct` : "no direct"}
-          </span>
-          {!!result.fallbackEmbeds.length && <span className="chip warn">{result.fallbackEmbeds.length} fallback</span>}
-        </div>
-        {!!result.warnings.length && <div className="warning-text">{result.warnings.join(" ")}</div>}
-        <div className="source-list">
-          {sources.map((candidate) => (
-            <label key={candidate.url} className="source-row" onClick={(event) => event.stopPropagation()}>
-              <input
-                type="radio"
-                checked={selected?.url === candidate.url}
-                onChange={() => onSelect(candidate)}
-              />
+    <div className="source-picker">
+      <div className="chips">
+        <span className={result.candidates.length ? "chip good" : "chip warn"}>
+          {result.candidates.length ? `${result.candidates.length} direct` : "no direct"}
+        </span>
+        {!!result.fallbackEmbeds.length && <span className="chip warn">{result.fallbackEmbeds.length} fallback</span>}
+      </div>
+      {!!result.warnings.length && <div className="warning-text">{result.warnings.join(" ")}</div>}
+      <div className="source-list">
+        {sources.length === 0 ? (
+          <div className="empty-state small">No source found.</div>
+        ) : (
+          sources.map((candidate) => (
+            <label key={candidate.url} className="source-row">
+              <input type="radio" checked={selected?.url === candidate.url} onChange={() => onSelect(candidate)} />
               <span>{candidate.sourceType}</span>
               <code>{candidate.url}</code>
             </label>
-          ))}
-        </div>
+          ))
+        )}
       </div>
-    </article>
+    </div>
   );
 }
 
-function MetadataPanel({
-  result,
-  source,
+function VideoFormPanel({
+  form,
+  editingId,
+  onChange,
   onSave,
-  disabled
+  canSave
 }: {
-  result?: InspectResult;
-  source?: Candidate;
+  form: VideoForm;
+  editingId?: number;
+  onChange: (form: VideoForm) => void;
   onSave: () => void;
-  disabled: boolean;
+  canSave: boolean;
 }) {
+  const update = (key: keyof VideoForm, value: string) => onChange({ ...form, [key]: value });
   return (
     <div className="panel metadata-panel">
       <div className="panel-head">
-        <h2>Metadata</h2>
-        <button onClick={onSave} disabled={disabled}>
-          Save Video
+        <h2>{editingId ? `Edit #${editingId}` : "Metadata"}</h2>
+        <button onClick={onSave} disabled={!canSave}>
+          {editingId ? "Update Video" : "Save Video"}
         </button>
       </div>
-      {!result ? (
-        <div className="empty-state">Select an inspected result.</div>
-      ) : (
-        <div className="metadata-grid">
-          <label>
-            Title
-            <input readOnly value={result.metadata.title || ""} />
-          </label>
-          <label>
-            Thumbnail
-            <input readOnly value={result.metadata.thumbnail || ""} />
-          </label>
-          <div className="thumb-large">
-            <ImagePreview src={result.metadata.thumbnail} title={result.metadata.title} />
-          </div>
-          <label className="wide">
-            Description
-            <textarea readOnly value={result.metadata.description || ""} />
-          </label>
-          <label className="wide">
-            Selected Source
-            <input readOnly value={source?.url ?? ""} />
-          </label>
-          <label>
-            Source Type
-            <input readOnly value={source?.sourceType ?? ""} />
-          </label>
-          <label>
-            Page URL
-            <input readOnly value={result.pageUrl} />
-          </label>
+      <div className="metadata-grid">
+        <label>
+          Title
+          <input value={form.title} onChange={(event) => update("title", event.target.value)} />
+        </label>
+        <label>
+          Category
+          <input value={form.category} onChange={(event) => update("category", event.target.value)} placeholder="Action, Drama, Series..." />
+        </label>
+        <label className="wide">
+          Thumbnail
+          <input value={form.thumbnail} onChange={(event) => update("thumbnail", event.target.value)} />
+        </label>
+        <div className="thumb-large">
+          <ImagePreview src={form.thumbnail} title={form.title} />
         </div>
-      )}
+        <label className="wide">
+          Description
+          <textarea value={form.description} onChange={(event) => update("description", event.target.value)} />
+        </label>
+        <label className="wide">
+          Direct Video Source
+          <input value={form.sourceUrl} onChange={(event) => update("sourceUrl", event.target.value)} />
+        </label>
+        <label>
+          Source Type
+          <select value={form.sourceType} onChange={(event) => update("sourceType", event.target.value)}>
+            <option value="hls">hls</option>
+            <option value="mp4">mp4</option>
+            <option value="embed">embed</option>
+          </select>
+        </label>
+        <label>
+          Page URL
+          <input value={form.pageUrl} onChange={(event) => update("pageUrl", event.target.value)} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function VideoManager({
+  videos,
+  activeId,
+  onEdit,
+  onDelete
+}: {
+  videos: VideoRecord[];
+  activeId?: number;
+  onEdit: (video: VideoRecord) => void;
+  onDelete: (video: VideoRecord) => void;
+}) {
+  return (
+    <div className="panel library-panel">
+      <div className="panel-head">
+        <h2>Library</h2>
+        <span className="count-pill">{videos.length} videos</span>
+      </div>
+      <div className="library-list">
+        {videos.length === 0 ? (
+          <div className="empty-state">No videos saved yet.</div>
+        ) : (
+          videos.map((video) => (
+            <article key={video.id} className={`library-item ${activeId === video.id ? "active" : ""}`}>
+              <ImagePreview src={video.thumbnail} title={video.title} />
+              <div>
+                <h3>{video.title}</h3>
+                <div className="library-meta">
+                  <span>{video.category || "Uncategorized"}</span>
+                  <span>{video.sourceType}</span>
+                </div>
+                <code>{video.sourceUrl}</code>
+                <div className="library-actions">
+                  <button className="subtle-button" onClick={() => onEdit(video)}>
+                    Edit
+                  </button>
+                  <button className="danger-button" onClick={() => onDelete(video)}>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -419,6 +443,7 @@ function MetadataPanel({
 function CatalogPage() {
   const [videos, setVideos] = useState<VideoRecord[]>([]);
   const [status, setStatus] = useState("Loading...");
+  const [category, setCategory] = useState("All");
 
   useEffect(() => {
     fetch("/api/videos")
@@ -430,26 +455,59 @@ function CatalogPage() {
       .catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
   }, []);
 
+  const categories = getCategories(videos);
+  const visibleVideos = category === "All" ? videos : videos.filter((video) => normalizeCategory(video.category) === category);
+  const featured = visibleVideos[0] ?? videos[0];
+  const grouped = groupByCategory(visibleVideos);
+
   return (
-    <main className="site-shell">
-      <header className="topbar">
-        <div>
-          <h1>Stream Library</h1>
-          <p>Saved videos from your inspector database.</p>
-        </div>
+    <main className="netflix-shell">
+      <header className="catalog-topbar">
+        <a className="brand" href="/">
+          Stream Library
+        </a>
+        <nav className="category-menu">
+          {["All", ...categories].map((item) => (
+            <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
+              {item}
+            </button>
+          ))}
+        </nav>
         <a className="nav-link" href="/admin">
           Admin
         </a>
       </header>
-      <section className="catalog-grid">
-        {videos.map((video) => (
-          <a className="movie-card" key={video.id} href={`/watch/${video.id}`}>
-            <ImagePreview src={video.thumbnail} title={video.title} />
-            <strong>{video.title}</strong>
-          </a>
+
+      {featured && (
+        <section className="hero-feature">
+          <ImagePreview src={featured.thumbnail} title={featured.title} />
+          <div className="hero-copy">
+            <span className="category-kicker">{featured.category || "Uncategorized"}</span>
+            <h1>{featured.title}</h1>
+            <p>{featured.description}</p>
+            <a className="play-link" href={`/watch/${featured.id}`}>
+              Play
+            </a>
+          </div>
+        </section>
+      )}
+
+      <section className="content-rails">
+        {status && <div className="empty-state">{status}</div>}
+        {Object.entries(grouped).map(([name, items]) => (
+          <div className="rail" key={name}>
+            <h2>{name}</h2>
+            <div className="poster-row">
+              {items.map((video) => (
+                <a className="poster-card" key={video.id} href={`/watch/${video.id}`}>
+                  <ImagePreview src={video.thumbnail} title={video.title} />
+                  <strong>{video.title}</strong>
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
       </section>
-      {status && <div className="empty-state">{status}</div>}
     </main>
   );
 }
@@ -487,6 +545,7 @@ function WatchPage() {
           </div>
           <aside className="watch-meta">
             <ImagePreview src={video.thumbnail} title={video.title} />
+            <span className="category-kicker">{video.category || "Uncategorized"}</span>
             <h1>{video.title}</h1>
             <p>{video.description}</p>
           </aside>
@@ -568,6 +627,7 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
 
 function ImagePreview({ src, title }: { src: string; title: string }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
   if (!src || failed) return <div className="image-fallback">No image</div>;
   return <img className="image-preview" src={src} alt={title} referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
 }
@@ -581,6 +641,40 @@ function formatResultStatus(result: InspectResult): string {
   if (result.candidates.length > 1) return "Multiple direct video sources found. Select one before saving.";
   if (result.fallbackEmbeds.length) return "No direct video source found. Fallback embed is available.";
   return "No direct video source found.";
+}
+
+function inferCategory(title: string, description: string) {
+  const text = `${title} ${description}`.toLowerCase();
+  const matches = [
+    "Action",
+    "Adventure",
+    "Animation",
+    "Comedy",
+    "Crime",
+    "Drama",
+    "Fantasy",
+    "Horror",
+    "Romance",
+    "Sci-Fi",
+    "Thriller"
+  ];
+  return matches.find((item) => text.includes(item.toLowerCase())) ?? "Uncategorized";
+}
+
+function getCategories(videos: VideoRecord[]) {
+  return Array.from(new Set(videos.map((video) => normalizeCategory(video.category)))).sort((a, b) => a.localeCompare(b));
+}
+
+function groupByCategory(videos: VideoRecord[]) {
+  return videos.reduce<Record<string, VideoRecord[]>>((groups, video) => {
+    const category = normalizeCategory(video.category);
+    groups[category] = [...(groups[category] ?? []), video];
+    return groups;
+  }, {});
+}
+
+function normalizeCategory(value: string) {
+  return value?.trim() || "Uncategorized";
 }
 
 function formatDuration(value: number) {

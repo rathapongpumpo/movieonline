@@ -2,8 +2,8 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createVideo, getVideo, listVideos, type VideoInput } from "./db.js";
-import { discoverCandidatePages, inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
+import { createVideo, deleteVideo, getVideo, listVideos, updateVideo, type VideoInput } from "./db.js";
+import { inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -52,78 +52,6 @@ app.post("/api/admin/inspect", async (req, res) => {
   }
 });
 
-app.post("/api/admin/bulk-inspect", async (req, res) => {
-  res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("X-Accel-Buffering", "no");
-
-  const write = (payload: unknown) => res.write(`${JSON.stringify(payload)}\n`);
-
-  try {
-    const url = String(req.body?.url ?? "");
-    const limit = clamp(Number(req.body?.limit ?? 12), 1, 50);
-    write({ type: "status", stage: "discover", progress: 3, message: "Discovering movie pages..." });
-
-    const discovered = await discoverCandidatePages(url, limit);
-    write({
-      type: "discovered",
-      stage: "discover",
-      progress: 10,
-      total: discovered.length,
-      pages: discovered
-    });
-
-    if (discovered.length === 0) {
-      write({ type: "done", progress: 100, results: [] });
-      res.end();
-      return;
-    }
-
-    const results = [];
-    for (let index = 0; index < discovered.length; index += 1) {
-      const page = discovered[index];
-      const baseProgress = 10 + Math.round((index / discovered.length) * 85);
-      write({
-        type: "status",
-        stage: "inspect",
-        progress: baseProgress,
-        current: index + 1,
-        total: discovered.length,
-        url: page.url,
-        message: `Inspecting ${index + 1}/${discovered.length}`
-      });
-
-      try {
-        const result = await inspectSite(page.url, { maxPages: 1 });
-        const item = buildAdminInspectResult(result);
-        results.push(item);
-        write({
-          type: "result",
-          progress: 10 + Math.round(((index + 1) / discovered.length) * 85),
-          current: index + 1,
-          total: discovered.length,
-          result: item
-        });
-      } catch (error) {
-        write({
-          type: "error",
-          progress: 10 + Math.round(((index + 1) / discovered.length) * 85),
-          current: index + 1,
-          total: discovered.length,
-          url: page.url,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-
-    write({ type: "done", progress: 100, total: discovered.length, results });
-  } catch (error) {
-    write({ type: "fatal", progress: 100, error: error instanceof Error ? error.message : String(error) });
-  } finally {
-    res.end();
-  }
-});
-
 app.get("/api/videos", (_req, res) => {
   res.json({ videos: listVideos() });
 });
@@ -147,6 +75,27 @@ app.post("/api/videos", (req, res) => {
       error: error instanceof Error ? error.message : String(error)
     });
   }
+});
+
+app.put("/api/videos/:id", (req, res) => {
+  try {
+    const input = validateVideoInput(req.body);
+    const video = updateVideo(Number(req.params.id), input);
+    res.json({ video });
+  } catch (error) {
+    res.status(error instanceof Error && error.message === "Video not found" ? 404 : 400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.delete("/api/videos/:id", (req, res) => {
+  const deleted = deleteVideo(Number(req.params.id));
+  if (!deleted) {
+    res.status(404).json({ error: "Video not found" });
+    return;
+  }
+  res.status(204).end();
 });
 
 app.listen(port, () => {
@@ -214,6 +163,7 @@ function validateVideoInput(value: Record<string, unknown>): VideoInput {
   if (!title) throw new Error("Title is required");
   if (!sourceUrl) throw new Error("Source URL is required");
   if (isBlockedMediaUrl(sourceUrl)) throw new Error("Blocked ad/tracker media source");
+  if (isLikelySidecarPlaylist(sourceUrl)) throw new Error("Blocked sidecar playlist source");
   if (!pageUrl) throw new Error("Page URL is required");
   return {
     title,
@@ -221,6 +171,7 @@ function validateVideoInput(value: Record<string, unknown>): VideoInput {
     pageUrl,
     description: String(value.description ?? ""),
     thumbnail: String(value.thumbnail ?? ""),
+    category: String(value.category ?? "Uncategorized"),
     sourceType: String(value.sourceType ?? "hls"),
     duration: typeof value.duration === "number" ? value.duration : null
   };
@@ -282,8 +233,4 @@ function isBlockedMediaUrl(url: string): boolean {
   } catch {
     return false;
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }
