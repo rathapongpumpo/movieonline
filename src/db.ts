@@ -27,6 +27,26 @@ export type VideoInput = {
   duration?: number | null;
 };
 
+export type VideoQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: string;
+};
+
+export type CategorySummary = {
+  name: string;
+  count: number;
+};
+
+export type VideoPage = {
+  videos: VideoRecord[];
+  total: number;
+  page: number;
+  pageSize: number;
+  categories: CategorySummary[];
+};
+
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const db = new Database(path.join(root, "site-source-inspector.db"));
 
@@ -52,6 +72,12 @@ if (!columns.some((column) => column.name === "category")) {
   db.exec("ALTER TABLE videos ADD COLUMN category TEXT NOT NULL DEFAULT 'Uncategorized'");
 }
 
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_videos_created_at ON videos (created_at DESC, id DESC);
+  CREATE INDEX IF NOT EXISTS idx_videos_category ON videos (category);
+  CREATE INDEX IF NOT EXISTS idx_videos_title ON videos (title);
+`);
+
 const rowToVideo = (row: Record<string, unknown>): VideoRecord => ({
   id: Number(row.id),
   title: String(row.title ?? ""),
@@ -66,9 +92,40 @@ const rowToVideo = (row: Record<string, unknown>): VideoRecord => ({
   updatedAt: String(row.updated_at ?? "")
 });
 
-export function listVideos(): VideoRecord[] {
-  const rows = db.prepare("SELECT * FROM videos ORDER BY created_at DESC, id DESC").all() as Record<string, unknown>[];
-  return rows.map(rowToVideo);
+export function listVideos(query: VideoQuery = {}): VideoPage {
+  const page = clampInteger(query.page ?? 1, 1, 100000);
+  const pageSize = clampInteger(query.pageSize ?? 24, 1, 100);
+  const params: Record<string, unknown> = {
+    limit: pageSize,
+    offset: (page - 1) * pageSize
+  };
+  const where: string[] = [];
+
+  const search = String(query.search ?? "").trim();
+  if (search) {
+    params.search = `%${escapeLike(search)}%`;
+    where.push("(title LIKE @search ESCAPE '\\' OR description LIKE @search ESCAPE '\\' OR page_url LIKE @search ESCAPE '\\')");
+  }
+
+  const category = String(query.category ?? "").trim();
+  if (category && category !== "All") {
+    params.category = category;
+    where.push("category = @category");
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const rows = db
+    .prepare(`SELECT * FROM videos ${whereSql} ORDER BY created_at DESC, id DESC LIMIT @limit OFFSET @offset`)
+    .all(params) as Record<string, unknown>[];
+  const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM videos ${whereSql}`).get(params) as { total: number };
+
+  return {
+    videos: rows.map(rowToVideo),
+    total: Number(totalRow.total ?? 0),
+    page,
+    pageSize,
+    categories: listCategories()
+  };
 }
 
 export function getVideo(id: number): VideoRecord | undefined {
@@ -140,7 +197,33 @@ export function deleteVideo(id: number): boolean {
   return result.changes > 0;
 }
 
+export function listCategories(): CategorySummary[] {
+  const rows = db
+    .prepare(
+      `
+      SELECT category AS name, COUNT(*) AS count
+      FROM videos
+      GROUP BY category
+      ORDER BY category COLLATE NOCASE ASC
+      `
+    )
+    .all() as Array<{ name: string; count: number }>;
+  return rows.map((row) => ({
+    name: String(row.name || "Uncategorized"),
+    count: Number(row.count ?? 0)
+  }));
+}
+
 function normalizeCategory(value: string): string {
   const category = value.trim();
   return category || "Uncategorized";
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
 }
