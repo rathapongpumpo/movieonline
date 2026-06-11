@@ -72,8 +72,25 @@ const emptyForm: VideoForm = {
   category: "ยังไม่จัดหมวด",
   pageUrl: "",
   sourceUrl: "",
-  sourceType: "hls"
+  sourceType: ""
 };
+
+const movieTypes = [
+  "ยังไม่จัดหมวด",
+  "หนังใหม่",
+  "แอ็กชัน",
+  "ผจญภัย",
+  "ตลก",
+  "ดราม่า",
+  "แฟนตาซี",
+  "สยองขวัญ",
+  "โรแมนติก",
+  "ไซไฟ",
+  "ระทึกขวัญ",
+  "อนิเมชัน",
+  "ซีรีส์",
+  "หนังไทย"
+];
 
 function App() {
   const path = window.location.pathname;
@@ -195,8 +212,17 @@ function AdminPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(translateError(data.error || "บันทึกไม่สำเร็จ"));
-      setEditingId(data.video.id);
-      setNotice({ tone: "success", text: editingId ? "อัปเดตแล้ว" : `บันทึกแล้ว เปิดดูได้ที่ /watch/${data.video.id}` });
+      setNotice({ tone: "success", text: editingId ? "อัปเดตแล้ว" : `บันทึกแล้ว: ${data.video.title}` });
+      if (!editingId) {
+        setUrl("");
+        setProgress(0);
+        setInspectStatus("พร้อมใช้งาน");
+        setInspectResult(undefined);
+        setSelectedSource(undefined);
+        setForm(emptyForm);
+      } else {
+        setEditingId(data.video.id);
+      }
       await loadVideos();
     } catch (error) {
       setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
@@ -292,8 +318,7 @@ function AdminPage() {
             )}
           </div>
 
-          <VideoEditor form={form} editingId={editingId} canSave={canSave} onChange={setForm} onSave={saveVideo} />
-          {notice.text && <div className={`inline-notice ${notice.tone}`}>{notice.text}</div>}
+          <VideoEditor form={form} editingId={editingId} notice={notice} canSave={canSave} onChange={setForm} onSave={saveVideo} />
         </div>
 
         <div className="admin-right">
@@ -420,12 +445,14 @@ function SourcePicker({
 function VideoEditor({
   form,
   editingId,
+  notice,
   canSave,
   onChange,
   onSave
 }: {
   form: VideoForm;
   editingId?: number;
+  notice: Notice;
   canSave: boolean;
   onChange: (form: VideoForm) => void;
   onSave: () => void;
@@ -437,21 +464,28 @@ function VideoEditor({
         <h2>{editingId ? `แก้ไขวิดีโอ #${editingId}` : "ข้อมูลวิดีโอ"}</h2>
       </div>
       <div className="save-callout">
+        <label className="save-type">
+          ประเภทหนัง
+          <select value={form.category} onChange={(event) => update("category", event.target.value)}>
+            {movieTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </label>
         <button className="primary-save" onClick={onSave} disabled={!canSave}>
           {editingId ? "อัปเดตวิดีโอ" : "บันทึกวิดีโอ"}
         </button>
         <span>{canSave ? "ตรวจข้อมูลให้ถูกต้องแล้วกดบันทึก" : "ต้องมีชื่อ, หน้าต้นทาง และแหล่งวิดีโอตรงก่อนบันทึก"}</span>
+        {notice.text && <div className={`save-notice ${notice.tone}`}>{notice.text}</div>}
       </div>
       <div className="editor-grid">
         <label className="wide">
           ชื่อเรื่อง
           <input value={form.title} onChange={(event) => update("title", event.target.value)} />
         </label>
-        <label>
-          หมวดหมู่
-          <input value={form.category} onChange={(event) => update("category", event.target.value)} placeholder="แอ็กชัน, ดราม่า, หนังไทย..." />
-        </label>
-        <label>
+        <label className="wide">
           ประเภทแหล่งวิดีโอ
           <select value={form.sourceType} onChange={(event) => update("sourceType", event.target.value)}>
             <option value="">ไม่มี</option>
@@ -543,7 +577,7 @@ function LibraryPanel({
           <option value="All">ทุกหมวดหมู่</option>
           {categories.map((category) => (
             <option key={category.name} value={category.name}>
-              {category.name} ({category.count})
+              {displayCategory(category.name)} ({category.count})
             </option>
           ))}
         </select>
@@ -893,8 +927,21 @@ function formatResultStatus(result: InspectResult): string {
 
 function inferCategory(title: string, description: string) {
   const text = `${title} ${description}`.toLowerCase();
-  const matches = ["Action", "Adventure", "Animation", "Comedy", "Crime", "Drama", "Fantasy", "Horror", "Romance", "Sci-Fi", "Thriller"];
-  return matches.find((item) => text.includes(item.toLowerCase())) ?? "ยังไม่จัดหมวด";
+  const matches = [
+    ["action", "แอ็กชัน"],
+    ["adventure", "ผจญภัย"],
+    ["animation", "อนิเมชัน"],
+    ["comedy", "ตลก"],
+    ["crime", "อาชญากรรม"],
+    ["drama", "ดราม่า"],
+    ["fantasy", "แฟนตาซี"],
+    ["horror", "สยองขวัญ"],
+    ["romance", "โรแมนติก"],
+    ["sci-fi", "ไซไฟ"],
+    ["science fiction", "ไซไฟ"],
+    ["thriller", "ระทึกขวัญ"]
+  ];
+  return matches.find(([keyword]) => text.includes(keyword))?.[1] ?? "ยังไม่จัดหมวด";
 }
 
 function groupByCategory(videos: VideoRecord[]) {
@@ -916,6 +963,20 @@ function formatDuration(value: number) {
 
 function displayCategory(value: string) {
   if (!value || value === "Uncategorized") return "ยังไม่จัดหมวด";
+  const legacy: Record<string, string> = {
+    Action: "แอ็กชัน",
+    Adventure: "ผจญภัย",
+    Animation: "อนิเมชัน",
+    Comedy: "ตลก",
+    Crime: "อาชญากรรม",
+    Drama: "ดราม่า",
+    Fantasy: "แฟนตาซี",
+    Horror: "สยองขวัญ",
+    Romance: "โรแมนติก",
+    "Sci-Fi": "ไซไฟ",
+    Thriller: "ระทึกขวัญ"
+  };
+  if (legacy[value]) return legacy[value];
   return value;
 }
 

@@ -256,23 +256,50 @@ p {
 
 .save-callout {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid #39465a;
   border-radius: 8px;
   background: #0f141e;
-  padding: 14px;
+  padding: 16px;
 }
 
 .primary-save {
   width: 100%;
-  min-height: 58px;
-  font-size: 18px;
+  min-height: 62px;
+  font-size: 20px;
 }
 
 .save-callout span {
   color: #aeb8c8;
   font-size: 13px;
   text-align: center;
+}
+
+.save-type {
+  display: grid;
+  gap: 6px;
+  color: #f5f7fb;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.save-notice {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.save-notice.loading {
+  background: #242b38;
+}
+
+.save-notice.success {
+  background: #168a4a;
+}
+
+.save-notice.error {
+  background: #b91c1c;
 }
 
 .chips,
