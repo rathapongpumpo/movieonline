@@ -2,7 +2,24 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createVideo, deleteVideo, getVideo, listVideos, updateVideo, type VideoInput } from "./db.js";
+import {
+  createEpisode,
+  createSeries,
+  createVideo,
+  deleteEpisode,
+  deleteSeries,
+  deleteVideo,
+  getSeries,
+  getVideo,
+  listSeries,
+  listVideos,
+  updateEpisode,
+  updateSeries,
+  updateVideo,
+  type EpisodeInput,
+  type SeriesInput,
+  type VideoInput
+} from "./db.js";
 import { inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
@@ -15,7 +32,7 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.static(reactRoot));
 app.use(express.static(path.join(root, "public")));
 
-app.get("/admin", (_req, res) => {
+app.get(["/admin", "/admin/series"], (_req, res) => {
   res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "admin.html"));
 });
 
@@ -102,6 +119,85 @@ app.delete("/api/videos/:id", (req, res) => {
   res.status(204).end();
 });
 
+app.get("/api/series", (_req, res) => {
+  res.json({ series: listSeries() });
+});
+
+app.get("/api/series/:id", (req, res) => {
+  const series = getSeries(Number(req.params.id));
+  if (!series) {
+    res.status(404).json({ error: "Series not found" });
+    return;
+  }
+  res.json({ series });
+});
+
+app.post("/api/series", (req, res) => {
+  try {
+    const input = validateSeriesInput(req.body);
+    const series = createSeries(input);
+    res.status(201).json({ series });
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.put("/api/series/:id", (req, res) => {
+  try {
+    const input = validateSeriesInput(req.body);
+    const series = updateSeries(Number(req.params.id), input);
+    res.json({ series });
+  } catch (error) {
+    res.status(error instanceof Error && error.message === "Series not found" ? 404 : 400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.delete("/api/series/:id", (req, res) => {
+  const deleted = deleteSeries(Number(req.params.id));
+  if (!deleted) {
+    res.status(404).json({ error: "Series not found" });
+    return;
+  }
+  res.status(204).end();
+});
+
+app.post("/api/series/:id/episodes", (req, res) => {
+  try {
+    const input = validateEpisodeInput(req.body, false);
+    const episode = createEpisode(Number(req.params.id), input);
+    res.status(201).json({ episode });
+  } catch (error) {
+    res.status(error instanceof Error && error.message === "Series not found" ? 404 : 400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.put("/api/episodes/:id", (req, res) => {
+  try {
+    const input = validateEpisodeInput(req.body, false);
+    const episode = updateEpisode(Number(req.params.id), input);
+    res.json({ episode });
+  } catch (error) {
+    res.status(error instanceof Error && error.message === "Episode not found" ? 404 : 400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.delete("/api/episodes/:id", (req, res) => {
+  const deleted = deleteEpisode(Number(req.params.id));
+  if (!deleted) {
+    res.status(404).json({ error: "Episode not found" });
+    return;
+  }
+  res.status(204).end();
+});
+
 app.listen(port, () => {
   console.log(`Site Source Inspector running at http://localhost:${port}`);
 });
@@ -178,6 +274,38 @@ function validateVideoInput(value: Record<string, unknown>): VideoInput {
     category: String(value.category ?? "Uncategorized"),
     sourceType: String(value.sourceType ?? "hls"),
     duration: typeof value.duration === "number" ? value.duration : null
+  };
+}
+
+function validateSeriesInput(value: Record<string, unknown>): SeriesInput {
+  const title = String(value.title ?? "").trim();
+  if (!title) throw new Error("Title is required");
+  return {
+    title,
+    description: String(value.description ?? ""),
+    poster: String(value.poster ?? ""),
+    category: String(value.category ?? "ยังไม่จัดหมวด"),
+    status: String(value.status ?? "draft"),
+    pageUrl: String(value.pageUrl ?? "")
+  };
+}
+
+function validateEpisodeInput(value: Record<string, unknown>, requireSource: boolean): EpisodeInput {
+  const title = String(value.title ?? "").trim();
+  const sourceUrl = String(value.sourceUrl ?? "").trim();
+  if (!title) throw new Error("Title is required");
+  if (requireSource && !sourceUrl) throw new Error("Source URL is required");
+  if (sourceUrl && isBlockedMediaUrl(sourceUrl)) throw new Error("Blocked ad/tracker media source");
+  if (sourceUrl && isLikelySidecarPlaylist(sourceUrl)) throw new Error("Blocked sidecar playlist source");
+  return {
+    episodeNumber: Number(value.episodeNumber ?? 1),
+    title,
+    description: String(value.description ?? ""),
+    thumbnail: String(value.thumbnail ?? ""),
+    pageUrl: String(value.pageUrl ?? ""),
+    sourceUrl,
+    sourceType: String(value.sourceType ?? "hls"),
+    status: String(value.status ?? "draft")
   };
 }
 

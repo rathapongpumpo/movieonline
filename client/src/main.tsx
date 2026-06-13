@@ -50,6 +50,50 @@ type VideoPage = {
   categories: CategorySummary[];
 };
 
+type EpisodeRecord = {
+  id: number;
+  seriesId: number;
+  episodeNumber: number;
+  title: string;
+  description: string;
+  thumbnail: string;
+  pageUrl: string;
+  sourceUrl: string;
+  sourceType: string;
+  status: string;
+};
+
+type SeriesRecord = {
+  id: number;
+  title: string;
+  description: string;
+  poster: string;
+  category: string;
+  status: string;
+  pageUrl: string;
+  episodes: EpisodeRecord[];
+};
+
+type SeriesForm = {
+  title: string;
+  description: string;
+  poster: string;
+  category: string;
+  status: string;
+  pageUrl: string;
+};
+
+type EpisodeForm = {
+  episodeNumber: number;
+  title: string;
+  description: string;
+  thumbnail: string;
+  pageUrl: string;
+  sourceUrl: string;
+  sourceType: string;
+  status: string;
+};
+
 type VideoForm = {
   title: string;
   description: string;
@@ -75,6 +119,26 @@ const emptyForm: VideoForm = {
   sourceType: ""
 };
 
+const emptySeriesForm: SeriesForm = {
+  title: "",
+  description: "",
+  poster: "",
+  category: "ซีรีส์",
+  status: "draft",
+  pageUrl: ""
+};
+
+const emptyEpisodeForm: EpisodeForm = {
+  episodeNumber: 1,
+  title: "",
+  description: "",
+  thumbnail: "",
+  pageUrl: "",
+  sourceUrl: "",
+  sourceType: "hls",
+  status: "draft"
+};
+
 const movieTypes = [
   "ยังไม่จัดหมวด",
   "หนังใหม่",
@@ -94,6 +158,7 @@ const movieTypes = [
 
 function App() {
   const path = window.location.pathname;
+  if (path.startsWith("/admin/series")) return <SeriesAdminPage />;
   if (path.startsWith("/admin")) return <AdminPage />;
   if (path.startsWith("/watch/")) return <WatchPage />;
   return <CatalogPage />;
@@ -281,6 +346,7 @@ function AdminPage() {
         <div>
           <h1>หลังบ้าน</h1>
           <p>นำเข้าหนัง ตรวจสอบแหล่งวิดีโอตรง แก้ไขข้อมูล และจัดการคลังหนัง</p>
+          <AdminTabs active="movies" />
         </div>
         <div className="admin-stats">
           <Stat label="ทั้งหมด" value={total} />
@@ -368,6 +434,20 @@ function Stat({ label, value }: { label: string; value: number }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function AdminTabs({ active }: { active: "movies" | "series" }) {
+  return (
+    <nav className="admin-tabs">
+      <a className={active === "movies" ? "active" : ""} href="/admin">
+        หนังเดี่ยว
+      </a>
+      <a className={active === "series" ? "active" : ""} href="/admin/series">
+        ซีรีส์
+      </a>
+      <span>การ์ตูน</span>
+    </nav>
   );
 }
 
@@ -653,6 +733,426 @@ function LibraryPanel({
   );
 }
 
+function SeriesAdminPage() {
+  const [seriesList, setSeriesList] = useState<SeriesRecord[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<number | undefined>();
+  const [seriesForm, setSeriesForm] = useState<SeriesForm>(emptySeriesForm);
+  const [episodeForm, setEpisodeForm] = useState<EpisodeForm>(emptyEpisodeForm);
+  const [editingEpisodeId, setEditingEpisodeId] = useState<number | undefined>();
+  const [episodeSources, setEpisodeSources] = useState<Candidate[]>([]);
+  const [seriesNotice, setSeriesNotice] = useState<Notice>({ tone: "idle", text: "" });
+  const [episodeNotice, setEpisodeNotice] = useState<Notice>({ tone: "idle", text: "" });
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    loadSeries();
+  }, []);
+
+  const selectedSeries = seriesList.find((item) => item.id === selectedSeriesId);
+  const totalEpisodes = seriesList.reduce((sum, item) => sum + item.episodes.length, 0);
+
+  async function loadSeries(nextSelectedId?: number) {
+    const response = await fetch("/api/series");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "โหลดซีรีส์ไม่สำเร็จ");
+    const items = data.series as SeriesRecord[];
+    setSeriesList(items);
+    const resolvedId = nextSelectedId ?? selectedSeriesId ?? items[0]?.id;
+    if (resolvedId && items.some((item) => item.id === resolvedId)) {
+      setSelectedSeriesId(resolvedId);
+      const current = items.find((item) => item.id === resolvedId);
+      if (current) setSeriesForm(seriesToForm(current));
+    } else {
+      setSelectedSeriesId(undefined);
+      setSeriesForm(emptySeriesForm);
+    }
+  }
+
+  function startNewSeries() {
+    setSelectedSeriesId(undefined);
+    setSeriesForm(emptySeriesForm);
+    setEpisodeForm(emptyEpisodeForm);
+    setEditingEpisodeId(undefined);
+    setEpisodeSources([]);
+    setSeriesNotice({ tone: "idle", text: "" });
+    setEpisodeNotice({ tone: "idle", text: "" });
+  }
+
+  function selectSeries(item: SeriesRecord) {
+    setSelectedSeriesId(item.id);
+    setSeriesForm(seriesToForm(item));
+    setEpisodeForm(nextEpisodeForm(item));
+    setEditingEpisodeId(undefined);
+    setEpisodeSources([]);
+    setSeriesNotice({ tone: "idle", text: "" });
+    setEpisodeNotice({ tone: "idle", text: "" });
+  }
+
+  async function saveSeries() {
+    if (!seriesForm.title.trim()) {
+      setSeriesNotice({ tone: "error", text: "กรุณาระบุชื่อซีรีส์" });
+      return;
+    }
+    setSeriesNotice({ tone: "loading", text: selectedSeriesId ? "กำลังอัปเดตซีรีส์..." : "กำลังสร้างซีรีส์..." });
+    try {
+      const response = await fetch(selectedSeriesId ? `/api/series/${selectedSeriesId}` : "/api/series", {
+        method: selectedSeriesId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(seriesForm)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(translateError(data.error || "บันทึกซีรีส์ไม่สำเร็จ"));
+      setSeriesNotice({ tone: "success", text: selectedSeriesId ? "อัปเดตซีรีส์แล้ว" : "สร้างซีรีส์แล้ว เพิ่มตอนได้เลย" });
+      setEpisodeForm(nextEpisodeForm(data.series));
+      setEditingEpisodeId(undefined);
+      setEpisodeSources([]);
+      await loadSeries(data.series.id);
+    } catch (error) {
+      setSeriesNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  async function deleteSelectedSeries() {
+    if (!selectedSeries) return;
+    if (!window.confirm(`ลบซีรีส์ "${selectedSeries.title}" พร้อมตอนทั้งหมดใช่ไหม?`)) return;
+    const response = await fetch(`/api/series/${selectedSeries.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setSeriesNotice({ tone: "error", text: data.error || "ลบซีรีส์ไม่สำเร็จ" });
+      return;
+    }
+    startNewSeries();
+    await loadSeries();
+  }
+
+  async function inspectEpisode() {
+    if (!episodeForm.pageUrl.trim()) {
+      setEpisodeNotice({ tone: "error", text: "กรุณาวาง URL หน้าตอนก่อนตรวจสอบ" });
+      return;
+    }
+    setBusy(true);
+    setEpisodeNotice({ tone: "loading", text: "กำลังตรวจสอบแหล่งวิดีโอตรงของตอนนี้..." });
+    setEpisodeSources([]);
+    try {
+      const response = await fetch("/api/admin/inspect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: episodeForm.pageUrl.trim() })
+      });
+      const data = (await response.json()) as InspectResult & { error?: string };
+      if (!response.ok) throw new Error(data.error || "ตรวจสอบตอนไม่สำเร็จ");
+      const source = data.candidates[0];
+      setEpisodeSources(data.candidates);
+      setEpisodeForm((current) => ({
+        ...current,
+        title: current.title || data.metadata.title || `ตอนที่ ${current.episodeNumber}`,
+        description: current.description || data.metadata.description || "",
+        thumbnail: current.thumbnail || data.metadata.thumbnail || selectedSeries?.poster || "",
+        sourceUrl: source?.url ?? current.sourceUrl,
+        sourceType: source?.sourceType ?? current.sourceType,
+        pageUrl: data.pageUrl || current.pageUrl
+      }));
+      setEpisodeNotice({
+        tone: source ? "success" : "error",
+        text: source ? `เจอแหล่งวิดีโอ ${data.candidates.length} รายการ` : "ไม่พบแหล่งวิดีโอตรงของตอนนี้"
+      });
+    } catch (error) {
+      setEpisodeNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveEpisode() {
+    if (!selectedSeries) {
+      setEpisodeNotice({ tone: "error", text: "กรุณาสร้างหรือเลือกซีรีส์ก่อน" });
+      return;
+    }
+    if (!episodeForm.title.trim()) {
+      setEpisodeNotice({ tone: "error", text: "กรุณาระบุชื่อตอน" });
+      return;
+    }
+    setEpisodeNotice({ tone: "loading", text: editingEpisodeId ? "กำลังอัปเดตตอน..." : "กำลังบันทึกตอน..." });
+    try {
+      const response = await fetch(editingEpisodeId ? `/api/episodes/${editingEpisodeId}` : `/api/series/${selectedSeries.id}/episodes`, {
+        method: editingEpisodeId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(episodeForm)
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(translateError(data.error || "บันทึกตอนไม่สำเร็จ"));
+      setEpisodeNotice({ tone: "success", text: editingEpisodeId ? "อัปเดตตอนแล้ว" : "เพิ่มตอนแล้ว" });
+      setEditingEpisodeId(undefined);
+      setEpisodeSources([]);
+      await loadSeries(selectedSeries.id);
+      const refreshed = seriesList.find((item) => item.id === selectedSeries.id) ?? selectedSeries;
+      setEpisodeForm(nextEpisodeForm(refreshed));
+    } catch (error) {
+      setEpisodeNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  function editEpisode(episode: EpisodeRecord) {
+    setEditingEpisodeId(episode.id);
+    setEpisodeForm(episodeToForm(episode));
+    setEpisodeSources([]);
+    setEpisodeNotice({ tone: "idle", text: "" });
+  }
+
+  async function deleteEpisodeRecord(episode: EpisodeRecord) {
+    if (!window.confirm(`ลบตอน "${episode.title}" ใช่ไหม?`)) return;
+    const response = await fetch(`/api/episodes/${episode.id}`, { method: "DELETE" });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setEpisodeNotice({ tone: "error", text: data.error || "ลบตอนไม่สำเร็จ" });
+      return;
+    }
+    setEpisodeNotice({ tone: "success", text: "ลบตอนแล้ว" });
+    setEditingEpisodeId(undefined);
+    setEpisodeForm(emptyEpisodeForm);
+    await loadSeries(selectedSeries?.id);
+  }
+
+  const updateSeriesForm = (key: keyof SeriesForm, value: string) => setSeriesForm((current) => ({ ...current, [key]: value }));
+  const updateEpisodeForm = (key: keyof EpisodeForm, value: string | number) =>
+    setEpisodeForm((current) => ({ ...current, [key]: value }));
+
+  return (
+    <main className="admin-shell">
+      <header className="admin-topbar">
+        <div>
+          <h1>หลังบ้านซีรีส์</h1>
+          <p>สร้างซีรีส์ จัดการตอน และตรวจสอบแหล่งวิดีโอตรงรายตอน</p>
+          <AdminTabs active="series" />
+        </div>
+        <div className="admin-stats">
+          <Stat label="ซีรีส์" value={seriesList.length} />
+          <Stat label="ตอน" value={totalEpisodes} />
+          <a className="nav-link" href="/">
+            ดูหน้าเว็บ
+          </a>
+        </div>
+      </header>
+
+      <section className="series-admin-grid">
+        <div className="admin-left">
+          <div className="panel editor-panel">
+            <div className="panel-head">
+              <h2>{selectedSeriesId ? `แก้ไขซีรีส์ #${selectedSeriesId}` : "เพิ่มซีรีส์ใหม่"}</h2>
+              <button className="subtle-button" onClick={startNewSeries}>
+                ซีรีส์ใหม่
+              </button>
+            </div>
+            <div className="editor-grid">
+              <label className="wide">
+                ชื่อซีรีส์
+                <input value={seriesForm.title} onChange={(event) => updateSeriesForm("title", event.target.value)} />
+              </label>
+              <label>
+                หมวดหมู่
+                <select value={seriesForm.category} onChange={(event) => updateSeriesForm("category", event.target.value)}>
+                  {movieTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                สถานะ
+                <select value={seriesForm.status} onChange={(event) => updateSeriesForm("status", event.target.value)}>
+                  <option value="draft">ร่าง</option>
+                  <option value="published">เผยแพร่</option>
+                  <option value="hidden">ซ่อน</option>
+                </select>
+              </label>
+              <label className="wide">
+                รูปปกซีรีส์
+                <input value={seriesForm.poster} onChange={(event) => updateSeriesForm("poster", event.target.value)} />
+              </label>
+              <div className="thumb-review">
+                <ImagePreview src={seriesForm.poster} title={seriesForm.title} />
+              </div>
+              <label className="wide">
+                URL ต้นทางของซีรีส์
+                <input value={seriesForm.pageUrl} onChange={(event) => updateSeriesForm("pageUrl", event.target.value)} />
+              </label>
+              <label className="wide">
+                รายละเอียดซีรีส์
+                <textarea value={seriesForm.description} onChange={(event) => updateSeriesForm("description", event.target.value)} />
+              </label>
+            </div>
+            <div className="save-callout">
+              <button className="primary-save" onClick={saveSeries}>
+                {selectedSeriesId ? "อัปเดตซีรีส์" : "บันทึกซีรีส์"}
+              </button>
+              {selectedSeriesId && (
+                <button className="danger-button tall-button" onClick={deleteSelectedSeries}>
+                  ลบซีรีส์นี้
+                </button>
+              )}
+              {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
+            </div>
+          </div>
+
+          <div className="panel editor-panel">
+            <div className="panel-head">
+              <h2>{editingEpisodeId ? `แก้ไขตอน #${editingEpisodeId}` : "เพิ่มตอน"}</h2>
+              <span className="count-pill">{selectedSeries ? selectedSeries.title : "ยังไม่ได้เลือกซีรีส์"}</span>
+            </div>
+            <div className="episode-toolbar">
+              <label>
+                ตอนที่
+                <input
+                  type="number"
+                  min={1}
+                  value={episodeForm.episodeNumber}
+                  onChange={(event) => updateEpisodeForm("episodeNumber", Number(event.target.value))}
+                />
+              </label>
+              <label>
+                สถานะ
+                <select value={episodeForm.status} onChange={(event) => updateEpisodeForm("status", event.target.value)}>
+                  <option value="draft">ร่าง</option>
+                  <option value="published">เผยแพร่</option>
+                  <option value="hidden">ซ่อน</option>
+                </select>
+              </label>
+            </div>
+            <div className="inspect-row">
+              <input
+                value={episodeForm.pageUrl}
+                onChange={(event) => updateEpisodeForm("pageUrl", event.target.value)}
+                placeholder="วางลิงก์หน้าตอนเพื่อค้นหา source"
+              />
+              <button disabled={busy || !selectedSeries} onClick={inspectEpisode}>
+                ตรวจสอบตอน
+              </button>
+            </div>
+            {episodeSources.length > 1 && (
+              <div className="source-list">
+                {episodeSources.map((source) => (
+                  <label key={source.url} className="source-row">
+                    <input
+                      type="radio"
+                      checked={episodeForm.sourceUrl === source.url}
+                      onChange={() => {
+                        updateEpisodeForm("sourceUrl", source.url);
+                        updateEpisodeForm("sourceType", source.sourceType);
+                      }}
+                    />
+                    <span>{source.sourceType}</span>
+                    <code>{source.url}</code>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="editor-grid">
+              <label className="wide">
+                ชื่อตอน
+                <input value={episodeForm.title} onChange={(event) => updateEpisodeForm("title", event.target.value)} />
+              </label>
+              <label className="wide">
+                รูปตอน
+                <input value={episodeForm.thumbnail} onChange={(event) => updateEpisodeForm("thumbnail", event.target.value)} />
+              </label>
+              <label className="wide">
+                แหล่งวิดีโอตรง
+                <input value={episodeForm.sourceUrl} onChange={(event) => updateEpisodeForm("sourceUrl", event.target.value)} />
+              </label>
+              <label className="wide">
+                ประเภท source
+                <select value={episodeForm.sourceType} onChange={(event) => updateEpisodeForm("sourceType", event.target.value)}>
+                  <option value="hls">hls</option>
+                  <option value="mp4">mp4</option>
+                  <option value="dash">dash</option>
+                </select>
+              </label>
+              <label className="wide">
+                รายละเอียดตอน
+                <textarea value={episodeForm.description} onChange={(event) => updateEpisodeForm("description", event.target.value)} />
+              </label>
+            </div>
+            <div className="save-callout">
+              <button className="primary-save" disabled={!selectedSeries || episodeNotice.tone === "loading"} onClick={saveEpisode}>
+                {editingEpisodeId ? "อัปเดตตอน" : "บันทึกตอน"}
+              </button>
+              <span>สร้างหรือเลือกซีรีส์ก่อน แล้วค่อยเพิ่มตอนในซีรีส์นั้น</span>
+              {episodeNotice.text && <div className={`save-notice ${episodeNotice.tone}`}>{episodeNotice.text}</div>}
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-right">
+          <div className="panel preview-panel compact">
+            <div className="panel-head">
+              <h2>ตัวอย่างตอน</h2>
+              {!episodeForm.sourceUrl && <span className="warn-label">ยังไม่มี source ของตอน</span>}
+            </div>
+            <Player source={episodeForm.sourceUrl} sourceType={episodeForm.sourceType} />
+          </div>
+
+          <div className="panel library-panel">
+            <div className="panel-head">
+              <h2>รายการซีรีส์</h2>
+              <span className="count-pill">{seriesList.length} เรื่อง</span>
+            </div>
+            <div className="series-list">
+              {seriesList.length === 0 && <div className="empty-state">ยังไม่มีซีรีส์</div>}
+              {seriesList.map((item) => (
+                <button
+                  key={item.id}
+                  className={`series-card ${item.id === selectedSeriesId ? "active" : ""}`}
+                  onClick={() => selectSeries(item)}
+                >
+                  <ImagePreview src={item.poster} title={item.title} />
+                  <span>
+                    <strong>{item.title}</strong>
+                    <small>
+                      {displayCategory(item.category)} · {item.episodes.length} ตอน · {displayStatus(item.status)}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel library-panel">
+            <div className="panel-head">
+              <h2>ตอนในซีรีส์</h2>
+              <span className="count-pill">{selectedSeries?.episodes.length ?? 0} ตอน</span>
+            </div>
+            <div className="episode-list">
+              {!selectedSeries && <div className="empty-state">เลือกซีรีส์เพื่อดูรายการตอน</div>}
+              {selectedSeries?.episodes.length === 0 && <div className="empty-state">ยังไม่มีตอน</div>}
+              {selectedSeries?.episodes.map((episode) => (
+                <div className="episode-card" key={episode.id}>
+                  <div>
+                    <strong>
+                      EP.{episode.episodeNumber} {episode.title}
+                    </strong>
+                    <span>
+                      {episode.sourceUrl ? episode.sourceType : "ยังไม่มี source"} · {displayStatus(episode.status)}
+                    </span>
+                  </div>
+                  <div className="row-actions">
+                    <button className="subtle-button" onClick={() => editEpisode(episode)}>
+                      แก้ไข
+                    </button>
+                    <button className="danger-button" onClick={() => deleteEpisodeRecord(episode)}>
+                      ลบ
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function CatalogPage() {
   const [videos, setVideos] = useState<VideoRecord[]>([]);
   const [categories, setCategories] = useState<CategorySummary[]>([]);
@@ -914,6 +1414,41 @@ function recordToForm(video: VideoRecord): VideoForm {
   };
 }
 
+function seriesToForm(series: SeriesRecord): SeriesForm {
+  return {
+    title: series.title,
+    description: series.description,
+    poster: series.poster,
+    category: displayCategory(series.category),
+    status: series.status,
+    pageUrl: series.pageUrl
+  };
+}
+
+function episodeToForm(episode: EpisodeRecord): EpisodeForm {
+  return {
+    episodeNumber: episode.episodeNumber,
+    title: episode.title,
+    description: episode.description,
+    thumbnail: episode.thumbnail,
+    pageUrl: episode.pageUrl,
+    sourceUrl: episode.sourceUrl,
+    sourceType: episode.sourceType || "hls",
+    status: episode.status || "draft"
+  };
+}
+
+function nextEpisodeForm(series: SeriesRecord): EpisodeForm {
+  const maxEpisode = series.episodes.reduce((max, episode) => Math.max(max, episode.episodeNumber), 0);
+  return {
+    ...emptyEpisodeForm,
+    episodeNumber: maxEpisode + 1,
+    thumbnail: series.poster,
+    title: `ตอนที่ ${maxEpisode + 1}`,
+    pageUrl: series.pageUrl
+  };
+}
+
 function getDefaultSource(result: InspectResult): Candidate | undefined {
   return result.candidates[0];
 }
@@ -978,6 +1513,12 @@ function displayCategory(value: string) {
   };
   if (legacy[value]) return legacy[value];
   return value;
+}
+
+function displayStatus(value: string) {
+  if (value === "published") return "เผยแพร่";
+  if (value === "hidden") return "ซ่อน";
+  return "ร่าง";
 }
 
 function translateWarning(value: string) {
