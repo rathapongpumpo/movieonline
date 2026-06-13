@@ -1,9 +1,10 @@
 # Software Requirements Specification (SRS)
 
 โปรเจกต์: Site Source Inspector  
-เวอร์ชันเอกสาร: 1.0  
+เวอร์ชันเอกสาร: 1.1
 วันที่จัดทำ: 2026-06-13  
 สถานะ: Draft สำหรับวิเคราะห์ ออกแบบ และส่งต่อทีมพัฒนา
+อัปเดตล่าสุด: เพิ่ม requirement สำหรับหน้า listing/detail แบบเว็บหนัง, advertising slots, related content, ซีรีส์, การ์ตูน, Netflix-like frontend และ mobile support
 
 ## 1. บทนำ
 
@@ -768,3 +769,339 @@ Library Cards
 1. ทำ inspector ให้แยกชั้นและเพิ่ม adapter รายเว็บได้ง่าย
 2. ทำ admin ให้รองรับข้อมูลจำนวนมากและใช้งานเร็ว
 3. ทำ player/frontend ให้เล่น source ที่บันทึกแล้วได้เสถียรและแสดง error ชัดเจน
+
+## 18. Content Portal Extension: Movies, Series, Cartoons, Ads และ Netflix-like Frontend
+
+### 18.1 วัตถุประสงค์ของส่วนขยายนี้
+
+ระบบต้องไม่ถูกออกแบบเป็นเพียงเครื่องมือ inspect URL ทีละเรื่องเท่านั้น แต่ต้องรองรับการเติบโตเป็นเว็บ content portal เต็มรูปแบบ มีทั้งภาพยนตร์ต่างประเทศ ภาพยนตร์ไทย ซีรีส์ การ์ตูน และรายการหลายตอน พร้อมพื้นที่โฆษณาและหน้า frontend ที่ดูง่ายแบบ streaming service
+
+Reference ที่ต้องนำมาพิจารณา:
+
+1. หน้า category/listing ของเว็บหนัง เช่น `https://www.24hd.net/category/inter-movie/` เป็นหน้ารวมรายการหนัง มี sidebar category, grid poster, rating/quality badge และ navigation หลัก
+2. หน้า detail ของหนัง เช่น `https://www.24hd.net/the-evil-lawyer-2026` มีพื้นที่วาง banner โฆษณาหลายตำแหน่ง
+3. หน้า detail มีรายการที่เกี่ยวข้องด้านล่าง เพื่อให้ผู้ชมดูต่อได้
+4. Frontend เป้าหมายต้องล้อแนวทาง Netflix มากขึ้น เช่น hero ขนาดใหญ่, poster rails, category rows, navigation ชัดเจน และ responsive สำหรับมือถือ
+
+### 18.2 Content Taxonomy
+
+ระบบต้องรองรับ content หลักอย่างน้อย 3 กลุ่ม:
+
+| ประเภท | ความหมาย | ตัวอย่างโครงสร้าง |
+| --- | --- | --- |
+| Movie | หนังเดี่ยว จบใน source เดียวหรือหลาย source สำรอง | Movie -> Source |
+| Series | ซีรีส์หลายตอน อาจมี season/episode | Series -> Season -> Episode -> Source |
+| Cartoon | การ์ตูนหรืออนิเมะ อาจเป็นหนังเดี่ยวหรือหลายตอน | Cartoon Movie หรือ Cartoon Series |
+
+ข้อกำหนด:
+
+1. ระบบต้องแยกชนิด content ให้ชัด ไม่ใช้ category แทนทุกอย่างจนสับสน
+2. Movie admin เดิมให้คงไว้สำหรับหนังเดี่ยว
+3. Series และ Cartoon ต้องมีหน้า admin ใหม่แยกต่างหาก ไม่แก้ทับ flow เดิมของ movie admin
+4. Content แต่ละรายการต้องมีสถานะอย่างน้อย `draft`, `published`, `hidden`
+5. Content หลายตอนต้องมี episode ordering ที่แก้ไขได้
+
+### 18.3 Admin Information Architecture
+
+โครงสร้างเมนูหลังบ้านที่แนะนำ:
+
+```text
+Admin
+├── ภาพยนตร์
+│   ├── เพิ่ม/ตรวจสอบหนัง
+│   ├── รายการหนัง
+│   └── แก้ไข/ลบ
+├── ซีรีส์
+│   ├── เพิ่มซีรีส์
+│   ├── จัดการ Season
+│   ├── จัดการ Episode
+│   └── ตรวจสอบ source รายตอน
+├── การ์ตูน
+│   ├── เพิ่มการ์ตูน
+│   ├── การ์ตูนเดี่ยว
+│   ├── การ์ตูนหลายตอน
+│   └── ตรวจสอบ source รายตอน
+├── หมวดหมู่
+├── แบนเนอร์โฆษณา
+└── ตั้งค่า
+```
+
+ข้อกำหนด UX:
+
+1. หน้า admin เดิมของหนังต้องไม่ถูกรื้อจน flow เดิมพัง
+2. หน้า series/cartoon admin ต้องออกแบบให้เพิ่มหลายตอนได้เร็ว
+3. ต้องมี bulk episode entry เช่น เพิ่มตอน 1-12 แล้วค่อย inspect ทีละตอน หรือ paste URL รายตอนเป็นชุดในอนาคต
+4. ต้องมี filter ตามประเภท content, category, status, ปี, source type และวันที่แก้ไข
+5. รายการจำนวนมากต้องใช้ pagination หรือ virtualized table
+
+### 18.4 Movie Admin Requirements
+
+หน้า movie admin เดิมยังมีหน้าที่:
+
+1. วาง URL หนังเดี่ยว
+2. กดตรวจสอบ
+3. หา Direct Video Source
+4. ดึง metadata
+5. เลือก category/content type
+6. preview
+7. save/edit/delete
+
+ข้อกำหนดเพิ่มเติม:
+
+1. ต้องมี field `contentType = movie`
+2. ต้องมี field quality badge เช่น `HD`, `FHD`, `ZOOM`, `4K`
+3. ต้องมี field audio/subtitle badge เช่น `พากย์ไทย`, `ซับไทย`, `SoundTrack`
+4. ต้องมี field year, country, rating, runtime หากดึงได้
+5. ต้องรองรับ related content mapping
+
+### 18.5 Series Admin Requirements
+
+หน้า series admin ต้องแยกจาก movie admin และออกแบบสำหรับข้อมูลหลายตอน
+
+Functional requirements:
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-SE01 | ระบบต้องสร้าง series master ได้ เช่น title, description, poster, backdrop, category, year, status | Must |
+| FR-SE02 | ระบบต้องสร้าง season ได้ หรือรองรับ series ที่ไม่มี season ชัดเจน | Should |
+| FR-SE03 | ระบบต้องเพิ่ม episode ได้หลายรายการ | Must |
+| FR-SE04 | Episode ต้องมี title, episode number, source URL, source type, thumbnail, runtime, status | Must |
+| FR-SE05 | Episode แต่ละตอนต้อง inspect source แยกได้ | Must |
+| FR-SE06 | ต้องมีปุ่ม preview source ของแต่ละ episode | Must |
+| FR-SE07 | ต้อง reorder episode ได้ | Should |
+| FR-SE08 | ต้อง publish/unpublish ราย episode ได้ | Should |
+
+UX ที่ต้องการ:
+
+1. ด้านบนเป็น series metadata
+2. ด้านล่างเป็น episode table
+3. แต่ละแถวมี inspect, preview, edit, delete
+4. ต้องเห็นชัดว่าตอนไหนมี source แล้ว ตอนไหนยังไม่มี
+5. มือถือใช้งานได้ด้วย card layout
+
+### 18.6 Cartoon Admin Requirements
+
+การ์ตูนมีได้ทั้งแบบหนังเดี่ยวและหลายตอน จึงต้องออกแบบให้เลือก subtype ตอนสร้าง
+
+Functional requirements:
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-CA01 | ระบบต้องสร้าง cartoon content ได้ | Must |
+| FR-CA02 | ต้องเลือกได้ว่าเป็น cartoon movie หรือ cartoon series | Must |
+| FR-CA03 | ถ้าเป็น cartoon movie ให้ใช้ flow คล้าย movie admin | Must |
+| FR-CA04 | ถ้าเป็น cartoon series ให้ใช้ flow คล้าย series admin | Must |
+| FR-CA05 | ต้องรองรับ category เช่น Anime, Animation, Family, Kids | Should |
+
+### 18.7 Advertising Slot Requirements
+
+ระบบต้องเตรียมพื้นที่โฆษณาแบบบริหารจัดการได้ แต่ต้องไม่ให้โฆษณาปะปนกับ video source detection
+
+ตำแหน่งโฆษณาที่ต้องรองรับ:
+
+| Slot | ตำแหน่ง | ใช้ในหน้า |
+| --- | --- | --- |
+| `home_top` | ด้านบนหน้าแรก | Frontend home |
+| `category_top` | ด้านบนหน้า category/listing | Category pages |
+| `detail_top` | เหนือรายละเอียด content | Detail/watch page |
+| `detail_before_player` | ก่อน player | Watch page |
+| `detail_after_player` | หลัง player | Watch page |
+| `sidebar_left` | sidebar ซ้าย | Desktop category/detail |
+| `sidebar_right` | sidebar ขวา | Desktop category/detail |
+| `mobile_inline` | ระหว่าง content บนมือถือ | Mobile |
+
+ข้อกำหนด:
+
+1. แบนเนอร์ต้องเปิด/ปิดได้
+2. ต้องตั้งวันที่เริ่มและสิ้นสุดได้ในอนาคต
+3. ต้องตั้ง target URL ได้
+4. ต้องรองรับ image banner ก่อน ส่วน HTML/script ad ให้พิจารณาเป็น phase หลังเพราะเสี่ยงด้าน security
+5. ต้องไม่แสดงแบนเนอร์จนทำให้ player หรือปุ่มสำคัญถูกดันจนใช้งานยาก
+6. บนมือถือ banner ต้อง responsive และไม่ทำให้ layout แตก
+
+### 18.8 Related Content Requirements
+
+หน้า detail/watch ต้องมีรายการที่เกี่ยวข้องเหมือนเว็บ streaming
+
+Related logic ที่แนะนำ:
+
+1. content type เดียวกันก่อน เช่น movie กับ movie, series กับ series
+2. category เดียวกัน
+3. tag เดียวกัน
+4. ปีใกล้เคียง
+5. ถ้ามี manual related mapping ให้ใช้ manual มาก่อน auto
+
+Functional requirements:
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-RC01 | Detail/watch page ต้องแสดง related content ด้านล่าง | Must |
+| FR-RC02 | Admin ต้องสามารถตั้ง related content เองได้ในอนาคต | Should |
+| FR-RC03 | ถ้าไม่มี manual related ระบบต้อง fallback เป็น auto related | Must |
+| FR-RC04 | Related content ต้องไม่รวมรายการปัจจุบัน | Must |
+
+### 18.9 Netflix-like Frontend Requirements
+
+Frontend ต้องล้อรูปแบบ streaming service มากกว่าหน้า grid เว็บหนังแบบเก่า
+
+องค์ประกอบหลัก:
+
+1. Dark cinematic UI
+2. Hero section ใหญ่ ใช้ backdrop หรือ poster ของรายการเด่น
+3. Navigation ด้านบนหรือด้านข้างตาม viewport
+4. Poster rails แนวนอน เช่น "มาใหม่", "ยอดนิยม", "หนังต่างประเทศ", "ซีรีส์", "การ์ตูน"
+5. Detail overlay หรือ detail page ที่มี title, description, metadata, play button, episode selector
+6. Watch page ที่ player เป็นจุดสนใจหลัก
+7. Mobile bottom navigation หรือ compact top navigation
+
+ข้อกำหนดสำคัญ:
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-NF01 | หน้าแรกต้องมี hero แบบ Netflix-like ไม่ใช่แค่ตารางรายการ | Must |
+| FR-NF02 | ต้องมี rail แยกตาม category/content type | Must |
+| FR-NF03 | Poster card ต้องมีภาพ, title, badge, year หรือ quality เท่าที่มีข้อมูล | Must |
+| FR-NF04 | ต้องรองรับ mobile swipe/scroll แนวนอน | Must |
+| FR-NF05 | ต้องมี search ที่เข้าถึงง่ายบน desktop และ mobile | Must |
+| FR-NF06 | ต้องมีหน้า category สำหรับดูทั้งหมดในหมวดนั้น | Should |
+| FR-NF07 | ต้องมีหน้า detail ที่แสดง related content | Must |
+| FR-NF08 | Series/cartoon series ต้องมี episode selector | Must |
+
+### 18.10 Mobile Requirements
+
+ระบบต้องรองรับมือถือทั้ง admin และ frontend
+
+Frontend mobile:
+
+1. Hero ต้องไม่สูงจนดัน content ออกทั้งหมด
+2. Poster rail ต้อง swipe ได้ง่าย
+3. ปุ่ม play/search/category ต้องกดง่าย
+4. Text ต้องไม่ล้น card
+5. Watch page ต้องวาง player บนสุด ตามด้วย episode/metadata/related
+
+Admin mobile:
+
+1. Form ต้องเรียงเป็น single column
+2. Preview ต้องย่อขนาดพอดีจอ
+3. Library table ต้องเปลี่ยนเป็น cards
+4. Episode list ต้องใช้งานได้บนจอเล็ก
+5. ปุ่ม save/inspect ต้องใหญ่พอและอยู่ใกล้บริบท
+
+### 18.11 Data Model Extension
+
+เมื่อต้องขยายระบบจริง ควรเพิ่ม entity ต่อไปนี้:
+
+#### content_items
+
+| Field | Description |
+| --- | --- |
+| id | primary key |
+| contentType | `movie`, `series`, `cartoon` |
+| cartoonSubtype | `movie`, `series`, nullable |
+| title | ชื่อเรื่อง |
+| description | คำอธิบาย |
+| posterUrl | รูป poster |
+| backdropUrl | รูป hero/backdrop |
+| categoryId | หมวดหมู่หลัก |
+| year | ปี |
+| country | ประเทศ |
+| rating | คะแนน |
+| runtime | ระยะเวลา |
+| quality | `HD`, `FHD`, `4K`, `ZOOM` |
+| audioType | `thai_dub`, `thai_sub`, `soundtrack` |
+| status | `draft`, `published`, `hidden` |
+| createdAt | วันที่สร้าง |
+| updatedAt | วันที่แก้ไข |
+
+#### seasons
+
+| Field | Description |
+| --- | --- |
+| id | primary key |
+| contentItemId | อ้างถึง series/cartoon series |
+| seasonNumber | เลข season |
+| title | ชื่อ season |
+| description | คำอธิบาย |
+| status | สถานะ |
+
+#### episodes
+
+| Field | Description |
+| --- | --- |
+| id | primary key |
+| contentItemId | อ้างถึง series/cartoon series |
+| seasonId | อ้างถึง season ถ้ามี |
+| episodeNumber | เลขตอน |
+| title | ชื่อตอน |
+| description | คำอธิบายตอน |
+| thumbnail | รูปตอน |
+| sourceUrl | Direct Video Source |
+| sourceType | `hls`, `mp4`, `dash`, `embed` |
+| runtime | ระยะเวลา |
+| status | `draft`, `published`, `hidden` |
+
+#### ad_placements
+
+| Field | Description |
+| --- | --- |
+| id | primary key |
+| slot | ตำแหน่งโฆษณา |
+| title | ชื่อแคมเปญ |
+| imageUrl | รูปแบนเนอร์ |
+| targetUrl | URL ปลายทาง |
+| isActive | เปิด/ปิด |
+| startAt | วันเริ่ม |
+| endAt | วันสิ้นสุด |
+
+#### related_content
+
+| Field | Description |
+| --- | --- |
+| id | primary key |
+| contentItemId | รายการหลัก |
+| relatedContentItemId | รายการที่เกี่ยวข้อง |
+| sortOrder | ลำดับแสดงผล |
+
+### 18.12 API Extension
+
+API ที่ควรเพิ่มเมื่อขยายระบบ:
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
+| `/api/admin/series` | GET/POST | จัดการ series master |
+| `/api/admin/series/:id` | GET/PUT/DELETE | แก้ไข/ลบ series |
+| `/api/admin/series/:id/episodes` | GET/POST | จัดการ episode |
+| `/api/admin/episodes/:id` | PUT/DELETE | แก้ไข/ลบ episode |
+| `/api/admin/cartoons` | GET/POST | จัดการ cartoon |
+| `/api/admin/ad-placements` | GET/POST | จัดการแบนเนอร์ |
+| `/api/content/home` | GET | ข้อมูลหน้าแรกแบบ hero + rails |
+| `/api/content/category/:slug` | GET | รายการตามหมวดหมู่ |
+| `/api/content/:id/related` | GET | รายการที่เกี่ยวข้อง |
+
+### 18.13 Acceptance Criteria เพิ่มเติม
+
+ระบบส่วนขยายนี้จะถือว่าผ่านเมื่อ:
+
+1. มีเมนูหลังบ้านแยกสำหรับภาพยนตร์ ซีรีส์ และการ์ตูน
+2. Movie admin เดิมยังใช้งานได้ ไม่ถูกทำให้ซับซ้อนเกินจำเป็น
+3. Series admin เพิ่ม/แก้ไข/ลบ episode ได้
+4. Cartoon admin รองรับทั้งการ์ตูนเดี่ยวและการ์ตูนหลายตอน
+5. Frontend หน้าแรกมี hero และ poster rails แบบ Netflix-like
+6. Detail/watch page แสดง related content
+7. มีตำแหน่งรองรับ banner ads ที่ไม่ทำให้ player ใช้งานยาก
+8. Mobile frontend ดูได้จริง ไม่ล้น ไม่ทับ ไม่ต้องซูม
+9. Mobile admin ทำงานหลักได้จริง ได้แก่ inspect, save, edit, delete
+10. ข้อมูลจำนวนมากยังค้นหา กรอง และแบ่งหน้าได้เร็ว
+
+### 18.14 Implementation Notes
+
+ลำดับการทำงานที่แนะนำ:
+
+1. ปรับ data model ให้รองรับ content type ก่อน
+2. แยก admin route/page ตาม content type
+3. เพิ่ม series/episode CRUD
+4. เพิ่ม cartoon flow โดย reuse movie/series logic ตาม subtype
+5. ปรับ frontend home เป็น Netflix-like layout
+6. เพิ่ม related content อัตโนมัติ
+7. เพิ่ม ad placement แบบ image banner ที่ปลอดภัยก่อน
+8. ค่อยเพิ่ม manual related, ad scheduling, และ dashboard ใน phase ถัดไป
