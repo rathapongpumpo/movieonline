@@ -646,6 +646,7 @@ Library Cards
 | `https://www.ebullio.co.uk/เซต้า-ปริศนาจารชน/` | พบ direct HLS `.m3u8` |
 | `https://www.nunghd4k.com/the-punisher-one-last-kill-2026/` | ไม่ควรบันทึก YouTube trailer เป็นหนังหลัก |
 | `https://25-hd.com/mortal-kombat-ii-2026/` | ถ้ายังไม่มี adapter เฉพาะ ให้แสดง fallback/embed ชัดเจน ไม่ปนกับ direct source |
+| `https://www.24hd.net/the-evil-lawyer-2026` | ต้องดึง metadata ได้ และพบ HLS หลัก `media.vdohls.com/.../playlist.m3u8` โดยไม่ปน MP4 โฆษณา |
 
 ## 12. Current Known Limitations
 

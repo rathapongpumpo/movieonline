@@ -859,7 +859,18 @@ function SeriesAdminPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(translateError(data.error || "บันทึกซีรีส์ไม่สำเร็จ"));
       setSeriesNotice({ tone: "success", text: selectedSeriesId ? "อัปเดตซีรีส์แล้ว" : "สร้างซีรีส์แล้ว เพิ่มตอนได้เลย" });
-      setEpisodeForm(nextEpisodeForm(data.series));
+      setEpisodeForm((current) =>
+        selectedSeriesId
+          ? current
+          : {
+              ...current,
+              episodeNumber: current.episodeNumber || 1,
+              title: current.title || "ตอนที่ 1",
+              thumbnail: current.thumbnail || data.series.poster,
+              pageUrl: current.pageUrl || data.series.pageUrl,
+              sourceType: current.sourceType || "hls"
+            }
+      );
       setEditingEpisodeId(undefined);
       setEpisodeSources([]);
       await loadSeries(data.series.id);

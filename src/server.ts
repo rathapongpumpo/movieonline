@@ -236,6 +236,7 @@ function buildAdminInspectResult(result: InspectResult) {
   if (allSources.some((candidate) => !isYoutubeUrl(candidate.url))) {
     allSources = allSources.filter((candidate) => !isYoutubeUrl(candidate.url));
   }
+  allSources = dropNestedHlsChildren(allSources);
   const candidates = allSources.filter((candidate) => candidate.sourceType !== "embed");
   const fallbackEmbeds = allSources.filter((candidate) => candidate.sourceType === "embed");
 
@@ -328,6 +329,16 @@ function isYoutubeUrl(url: string): boolean {
   }
 }
 
+function dropNestedHlsChildren<T extends { url: string; sourceType: string; probe?: { childPlaylistUrl?: string } }>(sources: T[]): T[] {
+  const childPlaylists = new Set(
+    sources
+      .map((source) => source.probe?.childPlaylistUrl)
+      .filter((url): url is string => Boolean(url))
+      .map((url) => url.toLowerCase())
+  );
+  return sources.filter((source) => source.sourceType !== "hls" || !childPlaylists.has(source.url.toLowerCase()));
+}
+
 function scoreMediaSource(item: MediaItem): number {
   let score = 0;
   const url = item.finalUrl.toLowerCase();
@@ -361,7 +372,12 @@ function isBlockedMediaUrl(url: string): boolean {
       "googleadservices.com",
       "p2p-cdnmovie.xyz"
     ];
-    return blockedHosts.some((blocked) => host === blocked || host.includes(blocked)) || /(^|\/)(ads?|banner|promo|pop|preroll)(\/|[-_.])/.test(path);
+    const blockedAdMediaNames = /(^|\/)(ufagool|ufa[^/]*|casino|betflix|sagame)[^/]*\.(mp4|m3u8|webm)(\?|$)/;
+    return (
+      blockedHosts.some((blocked) => host === blocked || host.includes(blocked)) ||
+      /(^|\/)(ads?|banner|promo|pop|preroll)(\/|[-_.])/.test(path) ||
+      blockedAdMediaNames.test(path)
+    );
   } catch {
     return false;
   }

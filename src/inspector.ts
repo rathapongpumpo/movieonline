@@ -439,8 +439,13 @@ async function extractDom(page: Page): Promise<DomExtraction> {
 }
 
 async function gotoInspectablePage(page: Page, url: string) {
-  await page.goto(url, { waitUntil: "commit", timeout: 30000 });
-  await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => undefined);
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+  } catch (error) {
+    await page.goto(url, { waitUntil: "commit", timeout: 45000 }).catch(() => {
+      throw error;
+    });
+  }
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => undefined);
 }
 
@@ -467,7 +472,7 @@ async function activatePlayers(page: Page): Promise<void> {
 
   await page.keyboard.press("Space").catch(() => undefined);
   await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => undefined);
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(7000);
 }
 
 function normalizeInputUrl(rawUrl: string): string {
