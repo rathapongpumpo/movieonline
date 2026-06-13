@@ -751,6 +751,7 @@ function SeriesAdminPage() {
 
   const selectedSeries = seriesList.find((item) => item.id === selectedSeriesId);
   const totalEpisodes = seriesList.reduce((sum, item) => sum + item.episodes.length, 0);
+  const hasSeriesDraft = Boolean(selectedSeriesId || seriesForm.title.trim() || seriesForm.pageUrl.trim());
 
   async function loadSeries(nextSelectedId?: number) {
     const response = await fetch("/api/series");
@@ -758,7 +759,7 @@ function SeriesAdminPage() {
     if (!response.ok) throw new Error(data.error || "โหลดซีรีส์ไม่สำเร็จ");
     const items = data.series as SeriesRecord[];
     setSeriesList(items);
-    const resolvedId = nextSelectedId ?? selectedSeriesId ?? items[0]?.id;
+    const resolvedId = nextSelectedId ?? selectedSeriesId;
     if (resolvedId && items.some((item) => item.id === resolvedId)) {
       setSelectedSeriesId(resolvedId);
       const current = items.find((item) => item.id === resolvedId);
@@ -1011,159 +1012,179 @@ function SeriesAdminPage() {
             <p>ระบบจะดึงชื่อเรื่อง รูปปก รายละเอียด และ URL ต้นทางมาใส่ฟอร์มให้ก่อนบันทึก</p>
           </div>
 
-          <div className="panel editor-panel">
-            <div className="panel-head">
-              <h2>{selectedSeriesId ? `แก้ไขซีรีส์ #${selectedSeriesId}` : "เพิ่มซีรีส์ใหม่"}</h2>
-              <span className="count-pill">{selectedSeriesId ? "โหมดแก้ไข" : "รอบันทึก"}</span>
+          {!hasSeriesDraft && (
+            <div className="panel empty-guide">
+              <h2>เริ่มจากวางลิงก์ซีรีส์</h2>
+              <p>วาง URL หน้าซีรีส์ด้านบนแล้วกดตรวจสอบ ระบบจะเติมข้อมูลให้ก่อนค่อยบันทึก</p>
             </div>
-            <div className="editor-grid">
-              <label className="wide">
-                ชื่อซีรีส์
-                <input value={seriesForm.title} onChange={(event) => updateSeriesForm("title", event.target.value)} />
-              </label>
-              <label>
-                หมวดหมู่
-                <select value={seriesForm.category} onChange={(event) => updateSeriesForm("category", event.target.value)}>
-                  {movieTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                สถานะ
-                <select value={seriesForm.status} onChange={(event) => updateSeriesForm("status", event.target.value)}>
-                  <option value="draft">ร่าง</option>
-                  <option value="published">เผยแพร่</option>
-                  <option value="hidden">ซ่อน</option>
-                </select>
-              </label>
-              <label className="wide">
-                รูปปกซีรีส์
-                <input value={seriesForm.poster} onChange={(event) => updateSeriesForm("poster", event.target.value)} />
-              </label>
-              <div className="thumb-review">
-                <ImagePreview src={seriesForm.poster} title={seriesForm.title} />
-              </div>
-              <label className="wide">
-                URL ต้นทางของซีรีส์
-                <input value={seriesForm.pageUrl} onChange={(event) => updateSeriesForm("pageUrl", event.target.value)} />
-              </label>
-              <label className="wide">
-                รายละเอียดซีรีส์
-                <textarea value={seriesForm.description} onChange={(event) => updateSeriesForm("description", event.target.value)} />
-              </label>
-            </div>
-            <div className="save-callout">
-              <button className="primary-save" onClick={saveSeries}>
-                {selectedSeriesId ? "อัปเดตซีรีส์" : "บันทึกซีรีส์"}
-              </button>
-              {selectedSeriesId && (
-                <button className="danger-button tall-button" onClick={deleteSelectedSeries}>
-                  ลบซีรีส์นี้
-                </button>
-              )}
-              {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
-            </div>
-          </div>
+          )}
 
-          <div className="panel editor-panel">
-            <div className="panel-head">
-              <h2>{editingEpisodeId ? `แก้ไขตอน #${editingEpisodeId}` : "เพิ่มตอน"}</h2>
-              <span className="count-pill">{selectedSeries ? selectedSeries.title : "ยังไม่ได้เลือกซีรีส์"}</span>
-            </div>
-            <div className="episode-toolbar">
-              <label>
-                ตอนที่
-                <input
-                  type="number"
-                  min={1}
-                  value={episodeForm.episodeNumber}
-                  onChange={(event) => updateEpisodeForm("episodeNumber", Number(event.target.value))}
-                />
-              </label>
-              <label>
-                สถานะ
-                <select value={episodeForm.status} onChange={(event) => updateEpisodeForm("status", event.target.value)}>
-                  <option value="draft">ร่าง</option>
-                  <option value="published">เผยแพร่</option>
-                  <option value="hidden">ซ่อน</option>
-                </select>
-              </label>
-            </div>
-            <div className="inspect-row">
-              <input
-                value={episodeForm.pageUrl}
-                onChange={(event) => updateEpisodeForm("pageUrl", event.target.value)}
-                placeholder="วางลิงก์หน้าตอนเพื่อค้นหา source"
-              />
-              <button disabled={busy || !selectedSeries} onClick={inspectEpisode}>
-                ตรวจสอบตอน
-              </button>
-            </div>
-            {episodeSources.length > 1 && (
-              <div className="source-list">
-                {episodeSources.map((source) => (
-                  <label key={source.url} className="source-row">
-                    <input
-                      type="radio"
-                      checked={episodeForm.sourceUrl === source.url}
-                      onChange={() => {
-                        updateEpisodeForm("sourceUrl", source.url);
-                        updateEpisodeForm("sourceType", source.sourceType);
-                      }}
-                    />
-                    <span>{source.sourceType}</span>
-                    <code>{source.url}</code>
-                  </label>
-                ))}
+          {hasSeriesDraft && (
+            <div className="panel editor-panel">
+              <div className="panel-head">
+                <h2>{selectedSeriesId ? `แก้ไขซีรีส์ #${selectedSeriesId}` : "ตรวจข้อมูลซีรีส์ก่อนบันทึก"}</h2>
+                <span className="count-pill">{selectedSeriesId ? "โหมดแก้ไข" : "ข้อมูลจาก URL"}</span>
               </div>
-            )}
-            <div className="editor-grid">
-              <label className="wide">
-                ชื่อตอน
-                <input value={episodeForm.title} onChange={(event) => updateEpisodeForm("title", event.target.value)} />
-              </label>
-              <label className="wide">
-                รูปตอน
-                <input value={episodeForm.thumbnail} onChange={(event) => updateEpisodeForm("thumbnail", event.target.value)} />
-              </label>
-              <label className="wide">
-                แหล่งวิดีโอตรง
-                <input value={episodeForm.sourceUrl} onChange={(event) => updateEpisodeForm("sourceUrl", event.target.value)} />
-              </label>
-              <label className="wide">
-                ประเภท source
-                <select value={episodeForm.sourceType} onChange={(event) => updateEpisodeForm("sourceType", event.target.value)}>
-                  <option value="hls">hls</option>
-                  <option value="mp4">mp4</option>
-                  <option value="dash">dash</option>
-                </select>
-              </label>
-              <label className="wide">
-                รายละเอียดตอน
-                <textarea value={episodeForm.description} onChange={(event) => updateEpisodeForm("description", event.target.value)} />
-              </label>
+              <div className="editor-grid">
+                <label className="wide">
+                  ชื่อซีรีส์
+                  <input value={seriesForm.title} onChange={(event) => updateSeriesForm("title", event.target.value)} />
+                </label>
+                <label>
+                  หมวดหมู่
+                  <select value={seriesForm.category} onChange={(event) => updateSeriesForm("category", event.target.value)}>
+                    {movieTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  สถานะ
+                  <select value={seriesForm.status} onChange={(event) => updateSeriesForm("status", event.target.value)}>
+                    <option value="draft">ร่าง</option>
+                    <option value="published">เผยแพร่</option>
+                    <option value="hidden">ซ่อน</option>
+                  </select>
+                </label>
+                <label className="wide">
+                  รูปปกซีรีส์
+                  <input value={seriesForm.poster} onChange={(event) => updateSeriesForm("poster", event.target.value)} />
+                </label>
+                <div className="thumb-review">
+                  <ImagePreview src={seriesForm.poster} title={seriesForm.title} />
+                </div>
+                <label className="wide">
+                  URL ต้นทางของซีรีส์
+                  <input value={seriesForm.pageUrl} onChange={(event) => updateSeriesForm("pageUrl", event.target.value)} />
+                </label>
+                <label className="wide">
+                  รายละเอียดซีรีส์
+                  <textarea value={seriesForm.description} onChange={(event) => updateSeriesForm("description", event.target.value)} />
+                </label>
+              </div>
+              <div className="save-callout">
+                <button className="primary-save" onClick={saveSeries}>
+                  {selectedSeriesId ? "อัปเดตซีรีส์" : "บันทึกซีรีส์"}
+                </button>
+                {selectedSeriesId && (
+                  <button className="danger-button tall-button" onClick={deleteSelectedSeries}>
+                    ลบซีรีส์นี้
+                  </button>
+                )}
+                {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
+              </div>
             </div>
-            <div className="save-callout">
-              <button className="primary-save" disabled={!selectedSeries || episodeNotice.tone === "loading"} onClick={saveEpisode}>
-                {editingEpisodeId ? "อัปเดตตอน" : "บันทึกตอน"}
-              </button>
-              <span>สร้างหรือเลือกซีรีส์ก่อน แล้วค่อยเพิ่มตอนในซีรีส์นั้น</span>
-              {episodeNotice.text && <div className={`save-notice ${episodeNotice.tone}`}>{episodeNotice.text}</div>}
+          )}
+
+          {hasSeriesDraft && !selectedSeries && (
+            <div className="panel empty-guide">
+              <h2>บันทึกซีรีส์ก่อนเพิ่มตอน</h2>
+              <p>หลังบันทึกแล้ว ระบบจะเปิดส่วนเพิ่มตอนให้วางลิงก์รายตอนและตรวจ source แยกแต่ละตอน</p>
             </div>
-          </div>
+          )}
+
+          {selectedSeries && (
+            <div className="panel editor-panel">
+              <div className="panel-head">
+                <h2>{editingEpisodeId ? `แก้ไขตอน #${editingEpisodeId}` : "เพิ่มตอน"}</h2>
+                <span className="count-pill">{selectedSeries.title}</span>
+              </div>
+              <div className="episode-toolbar">
+                <label>
+                  ตอนที่
+                  <input
+                    type="number"
+                    min={1}
+                    value={episodeForm.episodeNumber}
+                    onChange={(event) => updateEpisodeForm("episodeNumber", Number(event.target.value))}
+                  />
+                </label>
+                <label>
+                  สถานะ
+                  <select value={episodeForm.status} onChange={(event) => updateEpisodeForm("status", event.target.value)}>
+                    <option value="draft">ร่าง</option>
+                    <option value="published">เผยแพร่</option>
+                    <option value="hidden">ซ่อน</option>
+                  </select>
+                </label>
+              </div>
+              <div className="inspect-row">
+                <input
+                  value={episodeForm.pageUrl}
+                  onChange={(event) => updateEpisodeForm("pageUrl", event.target.value)}
+                  placeholder="วางลิงก์หน้าตอนเพื่อค้นหา source"
+                />
+                <button disabled={busy} onClick={inspectEpisode}>
+                  ตรวจสอบตอน
+                </button>
+              </div>
+              {episodeSources.length > 1 && (
+                <div className="source-list">
+                  {episodeSources.map((source) => (
+                    <label key={source.url} className="source-row">
+                      <input
+                        type="radio"
+                        checked={episodeForm.sourceUrl === source.url}
+                        onChange={() => {
+                          updateEpisodeForm("sourceUrl", source.url);
+                          updateEpisodeForm("sourceType", source.sourceType);
+                        }}
+                      />
+                      <span>{source.sourceType}</span>
+                      <code>{source.url}</code>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div className="editor-grid">
+                <label className="wide">
+                  ชื่อตอน
+                  <input value={episodeForm.title} onChange={(event) => updateEpisodeForm("title", event.target.value)} />
+                </label>
+                <label className="wide">
+                  รูปตอน
+                  <input value={episodeForm.thumbnail} onChange={(event) => updateEpisodeForm("thumbnail", event.target.value)} />
+                </label>
+                <label className="wide">
+                  แหล่งวิดีโอตรง
+                  <input value={episodeForm.sourceUrl} onChange={(event) => updateEpisodeForm("sourceUrl", event.target.value)} />
+                </label>
+                <label className="wide">
+                  ประเภท source
+                  <select value={episodeForm.sourceType} onChange={(event) => updateEpisodeForm("sourceType", event.target.value)}>
+                    <option value="hls">hls</option>
+                    <option value="mp4">mp4</option>
+                    <option value="dash">dash</option>
+                  </select>
+                </label>
+                <label className="wide">
+                  รายละเอียดตอน
+                  <textarea value={episodeForm.description} onChange={(event) => updateEpisodeForm("description", event.target.value)} />
+                </label>
+              </div>
+              <div className="save-callout">
+                <button className="primary-save" disabled={episodeNotice.tone === "loading"} onClick={saveEpisode}>
+                  {editingEpisodeId ? "อัปเดตตอน" : "บันทึกตอน"}
+                </button>
+                <span>วางลิงก์รายตอน กดตรวจสอบตอน แล้วบันทึกเข้าซีรีส์นี้</span>
+                {episodeNotice.text && <div className={`save-notice ${episodeNotice.tone}`}>{episodeNotice.text}</div>}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="admin-right">
-          <div className="panel preview-panel compact">
-            <div className="panel-head">
-              <h2>ตัวอย่างตอน</h2>
-              {!episodeForm.sourceUrl && <span className="warn-label">ยังไม่มี source ของตอน</span>}
+          {selectedSeries && (
+            <div className="panel preview-panel compact">
+              <div className="panel-head">
+                <h2>ตัวอย่างตอน</h2>
+                {!episodeForm.sourceUrl && <span className="warn-label">ยังไม่มี source ของตอน</span>}
+              </div>
+              <Player source={episodeForm.sourceUrl} sourceType={episodeForm.sourceType} />
             </div>
-            <Player source={episodeForm.sourceUrl} sourceType={episodeForm.sourceType} />
-          </div>
+          )}
 
           <div className="panel library-panel">
             <div className="panel-head">

@@ -560,6 +560,19 @@ code {
   background: #b91c1c;
 }
 
+.empty-guide {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  align-content: center;
+  border-style: dashed;
+  background: #0f141e;
+}
+
+.empty-guide h2 {
+  font-size: 22px;
+}
+
 .tall-button {
   min-height: 46px;
 }
