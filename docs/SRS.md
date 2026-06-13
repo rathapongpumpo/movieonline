@@ -1,0 +1,770 @@
+# Software Requirements Specification (SRS)
+
+โปรเจกต์: Site Source Inspector  
+เวอร์ชันเอกสาร: 1.0  
+วันที่จัดทำ: 2026-06-13  
+สถานะ: Draft สำหรับวิเคราะห์ ออกแบบ และส่งต่อทีมพัฒนา
+
+## 1. บทนำ
+
+### 1.1 วัตถุประสงค์ของเอกสาร
+
+เอกสารนี้ใช้กำหนดความต้องการของระบบ Site Source Inspector อย่างเป็นระบบ เพื่อให้ทีมพัฒนาหรือผู้รับงานต่อเข้าใจตรงกันว่าโปรเจกต์ต้องทำอะไร ทำอย่างไร ขอบเขตอยู่ตรงไหน และข้อจำกัดของระบบมีอะไรบ้าง
+
+เอกสารนี้ครอบคลุมทั้งระบบหลังบ้านสำหรับนำเข้า ตรวจสอบ แก้ไข และจัดการข้อมูลวิดีโอ รวมถึงระบบหน้าบ้านสำหรับแสดงรายการหนังหรือวิดีโอในรูปแบบคล้าย Netflix และเล่นวิดีโอจาก Direct Video Source ที่ระบบบันทึกไว้
+
+### 1.2 เป้าหมายของผลิตภัณฑ์
+
+Site Source Inspector เป็นเว็บแอปสำหรับช่วยผู้ดูแลระบบนำ URL ของหน้ารายละเอียดวิดีโอหรือหนังมาวาง แล้วให้ระบบตรวจสอบหาแหล่งวิดีโอที่เล่นได้จริงโดยอัตโนมัติ พร้อมดึง metadata สำคัญ เช่น ชื่อเรื่อง รูป thumbnail คำอธิบาย หมวดหมู่ และ source type จากนั้นให้ผู้ดูแลยืนยันก่อนบันทึกลงฐานข้อมูล
+
+ข้อมูลที่บันทึกแล้วจะถูกนำไปแสดงในหน้าบ้านเป็นเว็บไซต์ดูวิดีโอ/หนัง มีหน้าเลือกดูตามหมวดหมู่ ค้นหา รายละเอียด และหน้า player สำหรับเล่นวิดีโอ
+
+### 1.3 ขอบเขตการใช้งานที่อนุญาต
+
+ระบบนี้ควรใช้กับวิดีโอหรือเนื้อหาที่ผู้ใช้งานมีสิทธิ์จัดเก็บ เผยแพร่ หรือบริหารจัดการเท่านั้น ระบบไม่ควรถูกออกแบบเพื่อหลบเลี่ยง DRM, paywall, ระบบจำกัดสิทธิ์, token ที่ตั้งใจป้องกันการเข้าถึง หรือกลไกป้องกันลิขสิทธิ์ของบุคคลที่สาม
+
+### 1.4 คำจำกัดความ
+
+| คำ | ความหมาย |
+| --- | --- |
+| Direct Video Source | URL ที่สามารถนำไปให้ player เล่นวิดีโอได้โดยตรง เช่น `.m3u8`, `.mp4`, `.mpd` |
+| HLS | HTTP Live Streaming มักใช้ไฟล์ master playlist หรือ media playlist นามสกุล `.m3u8` |
+| DASH | MPEG-DASH มักใช้ไฟล์ manifest นามสกุล `.mpd` |
+| Fallback Embed | iframe หรือ embed player จากเว็บอื่น เช่น YouTube หรือ player บุคคลที่สาม ไม่ใช่ direct video source |
+| Sidecar Playlist | playlist ย่อย เช่น audio-only, subtitle, segment-list หรือ child playlist ที่ไม่เหมาะบันทึกเป็น source หลัก |
+| Inspector | กระบวนการเปิด URL ด้วย browser automation แล้วจับ DOM, iframe, network request และ media request เพื่อหา source |
+| Admin | ผู้ดูแลระบบที่นำเข้า ตรวจสอบ แก้ไข ลบ และบันทึกวิดีโอ |
+| Frontend | เว็บไซต์ฝั่งผู้ชม ใช้แสดงรายการวิดีโอและ player |
+
+## 2. ภาพรวมระบบ
+
+### 2.1 สถานะระบบปัจจุบัน
+
+โปรเจกต์ปัจจุบันเป็นเว็บแอป Node.js/TypeScript ใช้ Express เป็น backend, Playwright สำหรับ inspect URL, SQLite สำหรับเก็บข้อมูล และ React + Vite สำหรับ frontend/admin UI
+
+ระบบมีหน้าใช้งานหลักดังนี้
+
+| หน้า | URL | จุดประสงค์ |
+| --- | --- | --- |
+| Admin | `/admin` | นำเข้า URL, inspect, preview, save, edit, delete, search, filter |
+| Frontend Catalog | `/` | แสดงรายการวิดีโอแบบหน้าเว็บดูหนัง |
+| Watch Page | `/watch/:id` | เล่นวิดีโอและแสดงรายละเอียด |
+
+### 2.2 Architecture ระดับสูง
+
+```mermaid
+flowchart LR
+    A["Admin User"] --> B["React Admin UI"]
+    B --> C["Express API"]
+    C --> D["Inspector Service"]
+    D --> E["Playwright Chromium"]
+    E --> F["Target Source Page"]
+    C --> G["SQLite Database"]
+    H["Viewer"] --> I["React Frontend UI"]
+    I --> C
+    I --> J["Video Player"]
+    J --> K["Direct Video Source"]
+```
+
+### 2.3 แนวคิดการทำงานหลัก
+
+1. Admin วาง URL ของหน้ารายละเอียดหนังหรือวิดีโอ
+2. Admin กดปุ่มตรวจสอบ
+3. Backend ใช้ Playwright เปิดหน้าเว็บนั้นแบบ browser จริง
+4. Inspector ดึง metadata จาก HTML และจับ network/media request
+5. ระบบแยกผลลัพธ์เป็น Direct Video Source, fallback embed, trailer, ad/tracker หรือ media ที่ไม่ควรใช้
+6. ถ้าเจอ Direct Video Source ที่เหมาะสม ระบบให้ preview และให้ admin ยืนยันก่อนบันทึก
+7. ถ้าไม่เจอ Direct Video Source ระบบต้องแจ้งชัดเจน และไม่ควรให้บันทึก source ที่เป็น fallback/ad โดยไม่ได้ตั้งใจ
+8. วิดีโอที่บันทึกแล้วจะแสดงใน frontend และเล่นผ่าน player
+
+## 3. ผู้ใช้งานและ Use Case
+
+### 3.1 ประเภทผู้ใช้งาน
+
+| ผู้ใช้งาน | ความต้องการ |
+| --- | --- |
+| Admin | นำเข้าหนังทีละเรื่อง ตรวจสอบ source แก้ไขข้อมูล ลบข้อมูล จัดหมวดหมู่ และดูสถานะว่าข้อมูลพร้อมเผยแพร่หรือไม่ |
+| Viewer | ค้นหา เลือกหมวดหมู่ เปิดรายละเอียด และดูวิดีโอผ่าน player ที่ใช้งานง่าย |
+| Developer | เพิ่ม adapter สำหรับเว็บใหม่ แก้ logic คัดกรอง source ปรับ UI และดูแล API/DB |
+
+### 3.2 Use Case หลักของ Admin
+
+#### UC-A01: ตรวจสอบ URL หนังหนึ่งเรื่อง
+
+เป้าหมาย: หา Direct Video Source และ metadata จาก URL ที่วาง
+
+Flow:
+
+1. Admin เปิดหน้า `/admin`
+2. วาง URL ในช่องนำเข้า
+3. กดปุ่ม "ตรวจสอบ"
+4. ระบบแสดง progress ระหว่าง inspect
+5. ระบบแสดงผลลัพธ์ source ที่พบ
+6. ระบบเติมข้อมูล metadata ลงฟอร์ม
+7. Admin ตรวจสอบ preview
+8. Admin เลือกประเภทหนัง/หมวดหมู่
+9. Admin กดบันทึก
+10. ระบบบันทึกข้อมูลลง database และเคลียร์ฟอร์มนำเข้า
+
+#### UC-A02: กรณีไม่เจอ Direct Video Source
+
+เป้าหมาย: ป้องกันการบันทึกข้อมูลผิด เช่น iframe โฆษณา trailer หรือ fallback embed
+
+Flow:
+
+1. Admin วาง URL และกดตรวจสอบ
+2. ระบบ inspect แล้วไม่พบ Direct Video Source
+3. ระบบแสดงข้อความชัดเจนว่าไม่พบ Direct Video Source
+4. ถ้าพบ fallback embed ให้แสดงแยกต่างหากพร้อมคำเตือน
+5. ระบบไม่ auto-preview fallback ที่อาจมีโฆษณา
+6. ระบบไม่ควรเปิดให้บันทึกเป็นวิดีโอหลักโดยไม่ได้ยืนยันแบบชัดเจน
+
+#### UC-A03: แก้ไขข้อมูลวิดีโอเดิม
+
+เป้าหมาย: ให้ admin แก้ metadata, category, thumbnail, source และ source type ได้
+
+Flow:
+
+1. Admin ค้นหาวิดีโอใน Library
+2. กด "แก้ไข"
+3. ระบบโหลดข้อมูลเดิมขึ้นฟอร์ม
+4. Admin แก้ข้อมูล
+5. Admin กดบันทึก
+6. ระบบอัปเดตข้อมูลและแสดงแจ้งเตือนในตำแหน่งที่มองเห็นง่าย
+
+#### UC-A04: ลบวิดีโอ
+
+เป้าหมาย: ลบข้อมูลที่ไม่ต้องการออกจากระบบ
+
+Flow:
+
+1. Admin กด "ลบ" จาก Library
+2. ระบบถามยืนยัน
+3. Admin ยืนยัน
+4. ระบบลบข้อมูลจาก database
+5. Library refresh และแสดงแจ้งเตือน
+
+### 3.3 Use Case หลักของ Viewer
+
+#### UC-F01: เลือกดูวิดีโอจากหน้าบ้าน
+
+1. Viewer เปิด `/`
+2. เห็น hero section และรายการวิดีโอ
+3. เลือกหมวดหมู่หรือค้นหา
+4. กด poster/title เพื่อเข้า watch page
+
+#### UC-F02: เล่นวิดีโอ
+
+1. Viewer เปิด `/watch/:id`
+2. ระบบโหลด metadata และ source
+3. Player เริ่มพร้อมเล่น
+4. ถ้า source เล่นไม่ได้ ระบบแสดง error ที่เข้าใจง่าย
+
+## 4. Functional Requirements
+
+### 4.1 Admin Import และ Inspect
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-A01 | ระบบต้องมีช่องวาง URL สำหรับตรวจสอบหนังทีละเรื่อง | Must |
+| FR-A02 | ระบบต้องไม่เริ่ม inspect ทันทีหลังวาง URL ต้องรอให้กดปุ่มตรวจสอบก่อน | Must |
+| FR-A03 | ระบบต้อง validate URL เบื้องต้นก่อนส่งเข้า backend | Must |
+| FR-A04 | ระบบต้องแสดง progress หรือสถานะระหว่าง inspect ให้ชัดเจน | Must |
+| FR-A05 | ระบบต้องแสดงผล Direct Video Source แยกจาก fallback embed/trailer/ad | Must |
+| FR-A06 | ระบบต้องไม่นำ fallback embed หรือ ad มาเป็น direct source โดยอัตโนมัติ | Must |
+| FR-A07 | ระบบต้องเติม title, thumbnail, description, page URL และ source type ลงฟอร์มเมื่อพบข้อมูล | Must |
+| FR-A08 | ระบบต้องรองรับกรณีเจอ source มากกว่า 1 รายการ โดยให้ admin เลือกรายการที่จะใช้ | Must |
+| FR-A09 | ระบบต้องแสดงข้อความชัดเจนเมื่อไม่พบ Direct Video Source | Must |
+| FR-A10 | ระบบต้องแสดง fallback embed เฉพาะในส่วนคำเตือน ไม่ปะปนกับ source หลัก | Should |
+
+### 4.2 Source Detection และ Filtering
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-S01 | Inspector ต้องจับ network request ที่เป็น `.m3u8`, `.mp4`, `.mpd` | Must |
+| FR-S02 | Inspector ต้องจับ `<video>`, `<source>`, iframe, embed และ script-related candidate เท่าที่ทำได้ | Must |
+| FR-S03 | Inspector ต้อง classify source type เช่น `hls`, `mp4`, `dash`, `embed` | Must |
+| FR-S04 | Inspector ต้องกรอง ad/tracker/media false positive ออกจาก direct source | Must |
+| FR-S05 | Inspector ต้องพยายามเลือก HLS master playlist มากกว่า child playlist หรือ segment URL | Must |
+| FR-S06 | Inspector ต้องแยก trailer เช่น YouTube ออกจาก source หลัก | Must |
+| FR-S07 | Inspector ต้องส่ง fallback embed กลับมาได้เพื่อ debug แต่ต้อง flag ว่าไม่ใช่ direct source | Should |
+| FR-S08 | ระบบควรออกแบบให้เพิ่ม site-specific adapter ได้ในอนาคต | Must |
+
+### 4.3 Metadata Extraction
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-M01 | ระบบต้องดึง title จาก meta tag, OpenGraph, document title หรือ selector ที่เหมาะสม | Must |
+| FR-M02 | ระบบต้องดึง thumbnail จาก `og:image`, schema, poster หรือ image หลักของหน้า | Must |
+| FR-M03 | ระบบต้องดึง description จาก `og:description`, meta description หรือเนื้อหาหน้า | Must |
+| FR-M04 | ระบบต้องแสดง preview รูป thumbnail ทั้งฝั่ง admin และ frontend | Must |
+| FR-M05 | ระบบต้องให้ admin แก้ metadata เองก่อนบันทึก | Must |
+| FR-M06 | ระบบควรทำ image fallback ถ้ารูปโหลดไม่ได้ | Should |
+
+### 4.4 Save, Edit, Delete
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-D01 | ระบบต้องบันทึกวิดีโอลง database หลัง admin ยืนยันเท่านั้น | Must |
+| FR-D02 | ระบบต้องให้เลือกประเภทหนัง/หมวดหมู่ก่อนหรือระหว่างบันทึก | Must |
+| FR-D03 | ระบบต้องแก้ไขข้อมูลเดิมได้ | Must |
+| FR-D04 | ระบบต้องลบข้อมูลเดิมได้ | Must |
+| FR-D05 | ระบบต้องเคลียร์ช่อง URL และฟอร์มที่เกี่ยวข้องหลังบันทึกสำเร็จสำหรับรายการใหม่ | Must |
+| FR-D06 | ระบบต้องแสดงแจ้งเตือน save/update/delete ในตำแหน่งที่มองเห็นง่าย ไม่อยู่ท้ายจอ | Must |
+| FR-D07 | ระบบต้องป้องกันการบันทึก source ที่เป็น ad/tracker หรือ fallback โดยไม่ตั้งใจ | Must |
+
+### 4.5 Admin Library
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-L01 | ระบบต้องแสดงรายการวิดีโอที่บันทึกแล้วในหน้า admin | Must |
+| FR-L02 | ระบบต้องรองรับข้อมูลจำนวนหลักร้อยขึ้นไปด้วย pagination หรือ virtualized list | Must |
+| FR-L03 | ระบบต้องค้นหาจาก title, description และ page URL ได้ | Must |
+| FR-L04 | ระบบต้องกรองตาม category ได้ | Must |
+| FR-L05 | ระบบต้องแสดง thumbnail, title, category, source type และ actions | Must |
+| FR-L06 | ระบบต้อง responsive ใช้งานบน desktop, tablet และ mobile ได้ | Must |
+
+### 4.6 Frontend Catalog
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-F01 | หน้าบ้านต้องแสดงรายการวิดีโอจาก database | Must |
+| FR-F02 | หน้าบ้านต้องมีหมวดหมู่หนังให้เลือก | Must |
+| FR-F03 | หน้าบ้านต้องมี search | Should |
+| FR-F04 | หน้าบ้านควรมี layout คล้าย Netflix เช่น hero, rail, poster grid | Should |
+| FR-F05 | หน้าบ้านต้องแสดง thumbnail ถูกต้อง | Must |
+| FR-F06 | กดรายการวิดีโอแล้วต้องไปหน้า watch ได้ | Must |
+
+### 4.7 Watch Page และ Player
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-P01 | Watch page ต้องโหลดข้อมูลวิดีโอจาก API ตาม id | Must |
+| FR-P02 | Player ต้องรองรับ HLS `.m3u8` | Must |
+| FR-P03 | Player ต้องรองรับ MP4 direct file | Must |
+| FR-P04 | Player ควรรองรับ DASH `.mpd` หากเพิ่ม library ที่เหมาะสม | Should |
+| FR-P05 | Player ต้องแสดง error เมื่อเล่นไม่ได้ | Must |
+| FR-P06 | Player ควรใช้ library ที่ production-friendly เช่น hls.js, Shaka Player, Video.js หรือ JW Player ตามงบและ license | Should |
+
+## 5. Non-Functional Requirements
+
+### 5.1 Performance
+
+| ID | Requirement |
+| --- | --- |
+| NFR-P01 | หน้า admin ต้องโหลดรายการวิดีโอแบบแบ่งหน้า ไม่โหลดทั้งหมดเมื่อข้อมูลมีจำนวนมาก |
+| NFR-P02 | Inspect หนึ่ง URL ควรมี timeout ชัดเจน เช่น 30-60 วินาที |
+| NFR-P03 | UI ต้องไม่ค้างระหว่าง inspect ต้องแสดงสถานะ loading/progress |
+| NFR-P04 | Frontend catalog ต้อง render ได้ลื่นสำหรับข้อมูลหลักร้อยรายการ |
+
+### 5.2 Reliability
+
+| ID | Requirement |
+| --- | --- |
+| NFR-R01 | ถ้า inspect ล้มเหลว ระบบต้องคืน error ที่อ่านเข้าใจ ไม่ใช่ crash |
+| NFR-R02 | ถ้า thumbnail โหลดไม่ได้ ต้องมี fallback visual |
+| NFR-R03 | ถ้า video source เล่นไม่ได้ ต้องแสดงสถานะให้ viewer รู้ |
+| NFR-R04 | Save/update/delete ต้อง refresh state ให้ตรงกับ database |
+
+### 5.3 Security
+
+| ID | Requirement |
+| --- | --- |
+| NFR-S01 | ระบบ admin ควรมี authentication ก่อนใช้งานจริง |
+| NFR-S02 | API ต้อง validate input ทุก endpoint |
+| NFR-S03 | URL inspect ควรมี SSRF protection เช่น block localhost/private network ใน production |
+| NFR-S04 | ระบบไม่ควร expose stack trace หรือ internal error ให้ frontend |
+| NFR-S05 | ถ้ามีการ proxy source ในอนาคต ต้องป้องกัน abuse และ bandwidth leak |
+
+### 5.4 Maintainability
+
+| ID | Requirement |
+| --- | --- |
+| NFR-M01 | Logic inspect ควรแยกเป็น module ชัดเจน และรองรับ adapter รายเว็บ |
+| NFR-M02 | UI component ควรแยกตามหน้าที่ เช่น ImportPanel, PreviewPanel, MetadataForm, LibraryTable |
+| NFR-M03 | ควรมี test สำหรับ inspector filtering และ API validation |
+| NFR-M04 | เอกสาร setup, run, deploy และ troubleshooting ต้องอัปเดตตามระบบ |
+
+### 5.5 Usability และ UX
+
+| ID | Requirement |
+| --- | --- |
+| NFR-U01 | หน้า admin ต้องอ่านง่าย ใช้งานเร็ว และไม่รกตา |
+| NFR-U02 | ปุ่มสำคัญ เช่น ตรวจสอบและบันทึก ต้องมีขนาดและตำแหน่งเด่น |
+| NFR-U03 | ข้อความแจ้งเตือนต้องอยู่ใกล้บริบทของ action หรือในตำแหน่งที่เห็นทันที |
+| NFR-U04 | UI ต้องเป็นภาษาไทยในส่วนที่ admin ใช้งาน |
+| NFR-U05 | Responsive ต้องใช้งานได้จริง ไม่ใช่แค่ย่อขนาด |
+
+## 6. Data Requirements
+
+### 6.1 Entity: Video
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| id | integer | Yes | Primary key |
+| title | text | Yes | ชื่อวิดีโอ/หนัง |
+| description | text | No | คำอธิบาย |
+| thumbnail | text | No | URL รูป poster/thumbnail |
+| sourceUrl | text | Yes | Direct Video Source ที่เล่นได้ |
+| sourceType | text | Yes | `hls`, `mp4`, `dash`, `embed` |
+| pageUrl | text | No | URL ต้นทางที่ inspect |
+| category | text | No | หมวดหมู่ เช่น Action, Drama, Comedy |
+| createdAt | datetime | Yes | วันที่สร้าง |
+| updatedAt | datetime | Yes | วันที่แก้ไขล่าสุด |
+
+### 6.2 Category
+
+ปัจจุบัน category อาจมาจากค่าที่บันทึกในตาราง videos โดยตรง ยังไม่มีตาราง category แยก หากระบบใหญ่ขึ้นควรแยกเป็นตาราง categories เพื่อควบคุมชื่อหมวดหมู่ slug ลำดับแสดงผล และสถานะเปิด/ปิด
+
+### 6.3 ข้อควรพิจารณาเมื่อ scale
+
+| ประเด็น | แนวทาง |
+| --- | --- |
+| ข้อมูลเพิ่มเป็นหลักพัน | เพิ่ม index ที่ title, category, createdAt |
+| ต้องมีหลาย admin | เพิ่ม users, roles, audit_logs |
+| ต้องมีหลาย source ต่อเรื่อง | เพิ่ม video_sources แยกจาก videos |
+| ต้องมีตอน/ซีรีส์ | เพิ่ม series, seasons, episodes |
+| ต้องจัดหน้า landing เอง | เพิ่ม collections, banners, featured rows |
+
+## 7. API Requirements
+
+### 7.1 Admin Inspect
+
+Endpoint: `POST /api/admin/inspect`
+
+Request:
+
+```json
+{
+  "url": "https://example.com/movie-page/"
+}
+```
+
+Response สำเร็จ:
+
+```json
+{
+  "metadata": {
+    "title": "Movie Title",
+    "description": "Description",
+    "thumbnail": "https://example.com/poster.jpg",
+    "pageUrl": "https://example.com/movie-page/"
+  },
+  "sources": [
+    {
+      "url": "https://cdn.example.com/movie/playlist.m3u8",
+      "type": "hls",
+      "label": "video / xhr",
+      "isDirect": true
+    }
+  ],
+  "fallbackEmbeds": [
+    {
+      "url": "https://third-party.example.com/embed?id=123",
+      "type": "embed",
+      "label": "iframe embed",
+      "isDirect": false
+    }
+  ],
+  "warnings": []
+}
+```
+
+Response เมื่อไม่พบ source:
+
+```json
+{
+  "metadata": {
+    "title": "Movie Title",
+    "description": "",
+    "thumbnail": ""
+  },
+  "sources": [],
+  "fallbackEmbeds": [],
+  "warnings": [
+    "ไม่พบ Direct Video Source"
+  ]
+}
+```
+
+### 7.2 Videos
+
+#### GET `/api/videos`
+
+Query:
+
+| Parameter | Description |
+| --- | --- |
+| page | หน้าปัจจุบัน |
+| pageSize | จำนวนรายการต่อหน้า |
+| search | คำค้น |
+| category | หมวดหมู่ |
+
+Response:
+
+```json
+{
+  "videos": [],
+  "total": 0,
+  "page": 1,
+  "pageSize": 20,
+  "categories": []
+}
+```
+
+#### GET `/api/videos/:id`
+
+ดึงข้อมูลวิดีโอตาม id
+
+#### POST `/api/videos`
+
+สร้างวิดีโอใหม่
+
+#### PUT `/api/videos/:id`
+
+แก้ไขข้อมูลวิดีโอ
+
+#### DELETE `/api/videos/:id`
+
+ลบวิดีโอ
+
+## 8. Inspector Design
+
+### 8.1 Source Inspection Pipeline
+
+```mermaid
+flowchart TD
+    A["รับ URL"] --> B["Validate และ Normalize"]
+    B --> C["เปิดหน้าเว็บด้วย Playwright"]
+    C --> D["จับ DOM sources"]
+    C --> E["จับ iframe/embed"]
+    C --> F["จับ network/media requests"]
+    D --> G["รวม candidate"]
+    E --> G
+    F --> G
+    G --> H["Classify source type"]
+    H --> I["Filter ad/tracker/sidecar"]
+    I --> J["Rank candidate"]
+    J --> K{"มี Direct Source?"}
+    K -->|ใช่| L["ส่ง Direct Sources + Metadata"]
+    K -->|ไม่ใช่| M["ส่ง No Direct + Fallback/Warnings"]
+```
+
+### 8.2 Candidate Sources
+
+ระบบควรมองหา source จากตำแหน่งต่อไปนี้
+
+| แหล่ง | ตัวอย่าง |
+| --- | --- |
+| Network request | `.m3u8`, `.mp4`, `.mpd`, media response |
+| DOM video | `<video src>`, `<source src>` |
+| Inline script | URL ที่ฝังอยู่ใน JS config |
+| iframe | player embed |
+| OpenGraph/video meta | `og:video`, `twitter:player` |
+
+### 8.3 Direct Source Ranking
+
+ลำดับความน่าเชื่อถือที่ควรใช้:
+
+1. HLS master playlist ที่มี variant หลาย resolution
+2. MP4 direct file ที่เล่นได้
+3. DASH manifest
+4. HLS media playlist ที่ไม่ใช่ audio-only/segment-only
+5. Embed fallback เฉพาะกรณี admin เลือกเองและระบบอนุญาต
+
+### 8.4 Rejection Rules
+
+ระบบควร reject source ประเภทต่อไปนี้จาก direct source หลัก:
+
+| ประเภท | เหตุผล |
+| --- | --- |
+| ad media | เป็นโฆษณา ไม่ใช่หนัง |
+| tracker/pixel | ไม่ใช่วิดีโอ |
+| trailer | ไม่ใช่ตัวหนังหลัก |
+| iframe embed | เป็น player บุคคลที่สาม ไม่ใช่ direct video |
+| `.bin` fragment | มักเป็น segment ภายใน ไม่ใช่ source หลัก |
+| audio-only playlist | ไม่มีภาพ |
+| subtitle/caption | ไม่ใช่วิดีโอ |
+
+### 8.5 Site-Specific Adapter
+
+ควรออกแบบ adapter เพิ่มสำหรับเว็บที่มีโครงสร้างเฉพาะ เช่น player ซ้อน iframe, config encode, source อยู่หลัง API หรือมีการเลือก server ภายในหน้า
+
+โครงสร้างที่แนะนำ:
+
+```text
+src/inspectors/
+  core.ts
+  adapters/
+    generic.ts
+    zmdb.ts
+    ebullio.ts
+    nunghd4k.ts
+  filters.ts
+  ranking.ts
+  metadata.ts
+```
+
+Adapter แต่ละตัวควรมีหน้าที่:
+
+1. ตรวจว่า URL หรือ iframe ตรงกับ domain ที่รองรับหรือไม่
+2. เปิดหน้า/player ตามขั้นตอนเฉพาะ
+3. trigger action ที่จำเป็น เช่น กด play หรือเลือก server ถ้าถูกต้องตามขอบเขตการใช้งาน
+4. คืน candidate source ให้ core pipeline
+
+## 9. UI/UX Requirements
+
+### 9.1 Admin Page Design Principles
+
+หน้า admin ต้องเน้นทำงานเร็ว ไม่รก และใช้กับรายการจำนวนมากได้
+
+หลักการ:
+
+1. แบ่ง flow เป็นขั้นตอนชัดเจน: นำเข้า -> ตรวจสอบ -> ตรวจผล -> กรอก/แก้ไขข้อมูล -> บันทึก
+2. ปุ่มสำคัญต้องใหญ่และอยู่ใกล้จุดที่ผู้ใช้ตัดสินใจ
+3. Source result ต้องแยก direct/fallback/warning ให้ไม่สับสน
+4. Preview ต้องไม่กินพื้นที่เกินจำเป็นบนจอเล็ก
+5. Library ต้องค้นหาและกรองได้รวดเร็ว
+6. แจ้งเตือนต้องอยู่ใกล้บริบท เช่น กล่องบันทึก ไม่ใช่ท้ายจอ
+7. UI admin ต้องเป็นภาษาไทยทั้งหมด
+
+### 9.2 Admin Layout ที่แนะนำ
+
+Desktop:
+
+```text
++-------------------------------------------------------------+
+| Header: Admin / View site / Stats                            |
++-------------------------------+-----------------------------+
+| Import + Inspect              | Preview Player              |
+| Source Results                | Source Status               |
++-------------------------------+-----------------------------+
+| Metadata + Save Panel                                       |
++-------------------------------------------------------------+
+| Library Search / Filters                                    |
+| Paginated Table                                             |
++-------------------------------------------------------------+
+```
+
+Mobile:
+
+```text
+Header
+Import + Inspect
+Source Results
+Preview
+Metadata + Save
+Library Search
+Library Cards
+```
+
+### 9.3 Save UX
+
+หลังบันทึกสำเร็จ:
+
+1. แสดง success notice ใกล้ปุ่มบันทึก
+2. เคลียร์ช่อง URL import
+3. เคลียร์ source result ถ้าเป็น create ใหม่
+4. reset form เป็นสถานะพร้อมเพิ่มรายการใหม่
+5. refresh library
+
+กรณีแก้ไข:
+
+1. แสดง update success
+2. คง context ของรายการที่แก้ไขจนกว่า admin กด "รายการใหม่"
+3. refresh library
+
+### 9.4 Frontend Design Principles
+
+หน้าบ้านควรมีความรู้สึกคล้ายบริการ streaming:
+
+1. ภาพ thumbnail/poster ต้องเด่นและโหลดถูกต้อง
+2. หมวดหมู่ต้องเข้าถึงง่าย
+3. Search ต้องใช้งานเร็ว
+4. Hero ควรใช้ข้อมูลจากวิดีโอล่าสุดหรือวิดีโอเด่น
+5. Watch page ต้องเน้น player เป็นหลัก
+6. หาก source เล่นไม่ได้ ต้องมีข้อความแจ้ง ไม่ปล่อยให้ player ว่างเปล่า
+
+## 10. Player Strategy
+
+### 10.1 ตัวเลือก Player
+
+| Player | เหมาะกับ | หมายเหตุ |
+| --- | --- | --- |
+| Native `<video>` + hls.js | ระบบเบา ควบคุมเองง่าย | เหมาะกับ HLS/MP4 ทั่วไป |
+| Video.js | ต้องการ UI และ plugin ecosystem | ใช้ง่ายใน production |
+| Shaka Player | ต้องการ DASH/HLS และ feature ขั้นสูง | เหมาะกับ manifest หลายแบบ |
+| JW Player | ต้องการ player commercial สำเร็จรูป | ต้องตรวจ license และค่าใช้จ่าย |
+
+คำแนะนำระยะต้น: ใช้ native `<video>` + hls.js สำหรับ HLS/MP4 ก่อน เพราะเบาและควบคุมง่าย หากต่อไปต้องรองรับ DASH, DRM แบบถูกลิขสิทธิ์ หรือ analytics player ขั้นสูง ค่อยพิจารณา Shaka หรือ JW Player
+
+### 10.2 Playback Requirements
+
+1. HLS ต้องเล่นได้บน Chrome/Edge ผ่าน hls.js
+2. Safari อาจเล่น HLS native ได้
+3. MP4 เล่นผ่าน native video
+4. ต้อง handle CORS error
+5. ต้องแสดง error เมื่อ source ไม่สามารถเล่นได้
+
+## 11. Testing Strategy
+
+### 11.1 Unit Tests
+
+ควรมี test สำหรับ:
+
+1. URL classification
+2. ad/tracker filtering
+3. source ranking
+4. metadata extraction fallback
+5. API validation
+
+### 11.2 Integration Tests
+
+ควรทดสอบ:
+
+1. `POST /api/admin/inspect` กับ URL ที่คาดว่าจะเจอ direct HLS
+2. `POST /api/admin/inspect` กับ URL ที่มีเฉพาะ fallback embed
+3. Create/update/delete video
+4. Pagination/search/category filter
+
+### 11.3 UI Tests
+
+ควรใช้ Playwright ตรวจ:
+
+1. หน้า admin desktop
+2. หน้า admin mobile
+3. import -> inspect -> save flow
+4. edit/delete flow
+5. frontend thumbnail preview
+6. watch page player state
+
+### 11.4 Regression Cases ที่ควรเก็บไว้
+
+| URL | Expected Result |
+| --- | --- |
+| `https://www.ebullio.co.uk/เซต้า-ปริศนาจารชน/` | พบ direct HLS `.m3u8` |
+| `https://www.nunghd4k.com/the-punisher-one-last-kill-2026/` | ไม่ควรบันทึก YouTube trailer เป็นหนังหลัก |
+| `https://25-hd.com/mortal-kombat-ii-2026/` | ถ้ายังไม่มี adapter เฉพาะ ให้แสดง fallback/embed ชัดเจน ไม่ปนกับ direct source |
+
+## 12. Current Known Limitations
+
+| ข้อจำกัด | ผลกระทบ |
+| --- | --- |
+| ยังไม่มีระบบ login admin | ไม่เหมาะสำหรับ production public |
+| ยังไม่มี adapter รายเว็บครบ | บางเว็บอาจเจอแค่ fallback embed |
+| SQLite local file | เหมาะกับระบบเล็กถึงกลาง ยังไม่เหมาะกับ multi-instance |
+| ยังไม่มี queue/background job | Inspect หลายรายการพร้อมกันยังไม่เหมาะ |
+| ยังไม่มี source health check | Source ที่เคยบันทึกอาจหมดอายุได้ |
+| ยังไม่มี audit log | ไม่รู้ว่าใครแก้อะไรเมื่อไร |
+| ยังไม่มี image proxy/optimizer | thumbnail จากบางเว็บอาจ hotlink ไม่ได้ |
+| ยังไม่มี deploy config production | ต้องออกแบบ environment และ hosting เพิ่ม |
+
+## 13. Roadmap ที่แนะนำ
+
+### Phase 1: Stabilize Current System
+
+1. ทำ SRS และ README ให้ครบ
+2. แยก inspector core/filter/ranking ให้ดูแลได้ง่าย
+3. เพิ่ม test ให้ source filtering
+4. ปรับ admin UX ให้จบและ responsive จริง
+5. ตรวจ frontend thumbnail/player ให้เสถียร
+
+### Phase 2: Site Adapter System
+
+1. เพิ่ม adapter interface
+2. ทำ generic adapter
+3. ทำ adapter สำหรับเว็บที่ใช้งานจริงทีละเว็บ
+4. เก็บ regression fixtures ของแต่ละเว็บ
+5. เพิ่ม debug log สำหรับ inspect result
+
+### Phase 3: Production Readiness
+
+1. เพิ่ม admin authentication
+2. เพิ่ม role และ audit log
+3. เพิ่ม source health check
+4. เพิ่ม backup database
+5. เพิ่ม deployment config
+6. เพิ่ม monitoring/logging
+
+### Phase 4: Content Management Expansion
+
+1. เพิ่ม categories table
+2. เพิ่ม featured collections
+3. เพิ่ม series/seasons/episodes
+4. เพิ่ม bulk import แบบ queue ถ้าจำเป็น
+5. เพิ่ม dashboard สถานะ source
+
+## 14. Acceptance Criteria
+
+### 14.1 Admin
+
+ระบบจะถือว่าผ่านเมื่อ:
+
+1. Admin วาง URL แล้วระบบไม่ inspect จนกว่าจะกดปุ่ม
+2. ระหว่าง inspect มี progress/status ชัดเจน
+3. Direct Video Source แสดงแยกจาก fallback embed
+4. ถ้าไม่พบ direct source ระบบแจ้งชัดและไม่ save มั่ว
+5. Save สำเร็จแล้วเคลียร์ฟอร์มสำหรับรายการใหม่
+6. Edit/delete ใช้งานได้จริง
+7. Library รองรับข้อมูลจำนวนมากด้วย search/filter/pagination
+8. หน้า admin responsive ใช้งานได้บน mobile
+
+### 14.2 Frontend
+
+ระบบจะถือว่าผ่านเมื่อ:
+
+1. หน้าแรกแสดงวิดีโอจาก database
+2. Thumbnail แสดงถูกต้อง
+3. Category filter ทำงาน
+4. Search ทำงาน
+5. กดวิดีโอแล้วเข้า watch page ได้
+6. Watch page เล่น HLS/MP4 ได้
+7. ถ้า source เล่นไม่ได้ แสดง error ชัดเจน
+
+### 14.3 Inspector
+
+ระบบจะถือว่าผ่านเมื่อ:
+
+1. URL ที่มี direct HLS ต้องตรวจพบได้
+2. URL ที่มีแต่ trailer ต้องไม่ถูกบันทึกเป็นหนังหลัก
+3. URL ที่มี iframe embed ต้องถูกแยกเป็น fallback
+4. ad/tracker/media false positive ต้องถูกกรองออก
+5. ผล inspect ต้องอ่านเข้าใจและ debug ต่อได้
+
+## 15. Open Questions
+
+1. ต้องการให้ admin login ด้วย username/password ธรรมดา หรือเชื่อม external auth?
+2. ต้องการให้ source หมดอายุแล้วตรวจซ้ำอัตโนมัติหรือไม่?
+3. ต้องรองรับ series/episode ตั้งแต่ตอนนี้หรือยัง?
+4. ต้องการ deploy ที่ไหน เช่น VPS, Docker, Netlify, Render หรือเครื่อง local?
+5. ต้องการเก็บหลาย source ต่อหนึ่งวิดีโอหรือเลือก source เดียวพอ?
+6. ต้องการใช้ player ฟรีหรือ commercial player เช่น JW Player?
+7. ต้องการระบบ bulk import ในอนาคตแบบ queue หรือยังไม่เอา?
+8. ต้องการให้ category เป็น free text หรือเลือกจาก master data?
+
+## 16. Handoff Checklist
+
+ผู้รับงานต่อควรตรวจสิ่งต่อไปนี้ก่อนเริ่มพัฒนา:
+
+1. รัน `npm install`
+2. รัน `npx playwright install chromium`
+3. รัน `npm run check`
+4. รัน `npm run dev`
+5. เปิด `http://localhost:3000/admin`
+6. ทดสอบ inspect URL ที่มี direct HLS
+7. ทดสอบ inspect URL ที่มีแต่ fallback embed
+8. ทดสอบ save/edit/delete
+9. เปิด `http://localhost:3000`
+10. เปิด watch page จากรายการที่บันทึก
+11. ตรวจ responsive desktop/mobile
+12. อ่าน limitation และ roadmap ในเอกสารนี้ก่อนแก้ระบบใหญ่
+
+## 17. สรุปแนวทางสำคัญ
+
+ระบบที่ดีสำหรับโปรเจกต์นี้ไม่ควรทำแค่ "ดึงอะไรก็ได้ที่ดูเหมือนวิดีโอ" แต่ต้องแยกให้ชัดว่าอะไรคือ Direct Video Source จริง อะไรคือ fallback embed อะไรคือ trailer และอะไรคือโฆษณาหรือ media หลอก เพราะหัวใจของระบบคือความแม่นของ source ก่อนบันทึก
+
+งานต่อไปควรเน้น 3 เรื่อง:
+
+1. ทำ inspector ให้แยกชั้นและเพิ่ม adapter รายเว็บได้ง่าย
+2. ทำ admin ให้รองรับข้อมูลจำนวนมากและใช้งานเร็ว
+3. ทำ player/frontend ให้เล่น source ที่บันทึกแล้วได้เสถียรและแสดง error ชัดเจน
