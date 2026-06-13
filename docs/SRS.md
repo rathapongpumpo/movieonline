@@ -646,7 +646,7 @@ Library Cards
 | `https://www.ebullio.co.uk/เซต้า-ปริศนาจารชน/` | พบ direct HLS `.m3u8` |
 | `https://www.nunghd4k.com/the-punisher-one-last-kill-2026/` | ไม่ควรบันทึก YouTube trailer เป็นหนังหลัก |
 | `https://25-hd.com/mortal-kombat-ii-2026/` | ถ้ายังไม่มี adapter เฉพาะ ให้แสดง fallback/embed ชัดเจน ไม่ปนกับ direct source |
-| `https://www.24hd.net/the-evil-lawyer-2026` | ต้องดึง metadata ได้ และพบ HLS หลัก `media.vdohls.com/.../playlist.m3u8` โดยไม่ปน MP4 โฆษณา |
+| `https://www.24hd.net/the-evil-lawyer-2026` | ต้องดึง metadata ได้ พบ HLS หลัก `media.vdohls.com/.../playlist.m3u8` โดยไม่ปน MP4 โฆษณา และต้องแตก episode draft ได้ 8 ตอน |
 
 ## 12. Current Known Limitations
 
@@ -870,9 +870,10 @@ Functional requirements:
 | FR-SE05 | ระบบต้องเพิ่ม episode ได้หลายรายการ | Must |
 | FR-SE06 | Episode ต้องมี title, episode number, source URL, source type, thumbnail, runtime, status | Must |
 | FR-SE07 | Episode แต่ละตอนต้อง inspect source แยกได้จาก URL รายตอน | Must |
-| FR-SE08 | ต้องมีปุ่ม preview source ของแต่ละ episode | Must |
-| FR-SE09 | ต้อง reorder episode ได้ | Should |
-| FR-SE10 | ต้อง publish/unpublish ราย episode ได้ | Should |
+| FR-SE08 | เมื่อตรวจ URL หน้าซีรีส์ ระบบต้องพยายามดึงรายการตอนจากหน้าเว็บ เช่น EP.1-8 แล้วเตรียม episode draft หลายรายการ ไม่ใช่สร้างเฉพาะตอนที่ 1 เสมอ | Must |
+| FR-SE09 | ต้องมีปุ่ม preview source ของแต่ละ episode | Must |
+| FR-SE10 | ต้อง reorder episode ได้ | Should |
+| FR-SE11 | ต้อง publish/unpublish ราย episode ได้ | Should |
 
 UX ที่ต้องการ:
 

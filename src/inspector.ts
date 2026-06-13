@@ -42,6 +42,13 @@ export type LinkItem = {
   internal: boolean;
 };
 
+export type EpisodeCandidate = {
+  pageUrl: string;
+  title: string;
+  episodeNumber: number;
+  url: string;
+};
+
 export type MenuItem = {
   pageUrl: string;
   area: string;
@@ -54,6 +61,7 @@ export type PageResult = {
   title: string;
   metadata: PageMetadata;
   media: MediaItem[];
+  episodes: EpisodeCandidate[];
   links: LinkItem[];
   menus: MenuItem[];
 };
@@ -70,6 +78,7 @@ export type InspectResult = {
   pages: PageResult[];
   metadata: PageMetadata;
   media: MediaItem[];
+  episodes: EpisodeCandidate[];
   links: LinkItem[];
   menus: MenuItem[];
   errors: string[];
@@ -79,6 +88,7 @@ type DomExtraction = {
   title: string;
   metadata: PageMetadata;
   media: Omit<MediaItem, "pageUrl" | "foundBy">[];
+  episodes: Omit<EpisodeCandidate, "pageUrl">[];
   links: Omit<LinkItem, "pageUrl" | "internal">[];
   menus: Omit<MenuItem, "pageUrl">[];
 };
@@ -179,6 +189,7 @@ export async function inspectSite(rawUrl: string, options: InspectOptions = {}):
     pages,
     metadata: pages[0]?.metadata ?? { title: "", thumbnail: "", description: "" },
     media: uniqueBy(pages.flatMap((page) => page.media), (item) => `${item.pageUrl}|${item.foundBy}|${item.finalUrl}|${item.displayedAs}`),
+    episodes: uniqueBy(pages.flatMap((page) => page.episodes), (item) => `${item.episodeNumber}|${item.url}`),
     links: uniqueBy(pages.flatMap((page) => page.links), (item) => `${item.pageUrl}|${item.url}|${item.text}`),
     menus: uniqueBy(pages.flatMap((page) => page.menus), (item) => `${item.pageUrl}|${item.area}|${item.url}|${item.text}`),
     errors
@@ -248,6 +259,13 @@ async function inspectPage(page: Page, pageUrl: string, start: URL): Promise<Pag
     title: extracted.title,
     metadata: extracted.metadata,
     media: uniqueBy(enrichedMedia, (item) => `${item.foundBy}|${item.finalUrl}|${item.displayedAs}`),
+    episodes: uniqueBy(
+      extracted.episodes.map((episode) => ({
+        ...episode,
+        pageUrl
+      })),
+      (item) => `${item.episodeNumber}|${item.url}`
+    ),
     links: uniqueBy(links, (item) => `${item.url}|${item.text}`),
     menus: uniqueBy(menus, (item) => `${item.area}|${item.url}|${item.text}`)
   };
@@ -414,6 +432,31 @@ async function extractDom(page: Page): Promise<DomExtraction> {
       url: anchor.href || anchor.getAttribute("href") || ""
     }));
 
+    const episodes = Array.from(document.querySelectorAll<HTMLElement>("[data-link], [data-episode], a[href]"))
+      .map((element) => {
+        const text = (element.innerText || element.getAttribute("aria-label") || element.title || "").replace(/\s+/g, " ").trim();
+        const rawUrl =
+          element.getAttribute("data-link") ||
+          element.getAttribute("data-url") ||
+          element.getAttribute("data-src") ||
+          element.getAttribute("href") ||
+          "";
+        const episodeMatch = text.match(/\bEP\.?\s*(\d+)\b/i);
+        if (!episodeMatch || !rawUrl) return undefined;
+        const url = absoluteUrl(rawUrl);
+        const lowerUrl = url.toLowerCase();
+        if (!lowerUrl.includes("/embed") && !lowerUrl.includes("player") && !lowerUrl.includes(".m3u8") && !lowerUrl.includes(".mp4")) {
+          return undefined;
+        }
+        return {
+          title: text,
+          episodeNumber: Number(episodeMatch[1]),
+          url
+        };
+      })
+      .filter((episode): episode is { title: string; episodeNumber: number; url: string } => Boolean(episode))
+      .sort((a, b) => a.episodeNumber - b.episodeNumber);
+
     const menuAreas = Array.from(document.querySelectorAll<HTMLElement>("header, nav, footer, [role='navigation']"));
     const menus = menuAreas.flatMap((area) => {
       const areaName = area.tagName.toLowerCase() === "nav" ? "nav" : area.tagName.toLowerCase();
@@ -432,6 +475,7 @@ async function extractDom(page: Page): Promise<DomExtraction> {
         description: getMeta("meta[property='og:description']") || getMeta("meta[name='description']") || getMeta("meta[name='twitter:description']")
       },
       media,
+      episodes,
       links,
       menus
     };

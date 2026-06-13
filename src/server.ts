@@ -239,12 +239,14 @@ function buildAdminInspectResult(result: InspectResult) {
   allSources = dropNestedHlsChildren(allSources);
   const candidates = allSources.filter((candidate) => candidate.sourceType !== "embed");
   const fallbackEmbeds = allSources.filter((candidate) => candidate.sourceType === "embed");
+  const episodes = buildEpisodeCandidates(result.episodes ?? [], candidates);
 
   return {
     pageUrl: result.startUrl,
     metadata: result.metadata,
     candidates,
     fallbackEmbeds,
+    episodes,
     needsSelection: candidates.length !== 1,
     warnings: [
       ...(candidates.length === 0 ? ["No direct video source found."] : []),
@@ -337,6 +339,34 @@ function dropNestedHlsChildren<T extends { url: string; sourceType: string; prob
       .map((url) => url.toLowerCase())
   );
   return sources.filter((source) => source.sourceType !== "hls" || !childPlaylists.has(source.url.toLowerCase()));
+}
+
+function buildEpisodeCandidates(
+  episodes: Array<{ title: string; episodeNumber: number; url: string }>,
+  candidates: Array<{ url: string; sourceType: string }>
+) {
+  return episodes.map((episode) => {
+    const playerId = getEmbedId(episode.url);
+    const source = playerId ? candidates.find((candidate) => candidate.url.includes(playerId)) : undefined;
+    return {
+      title: episode.title,
+      episodeNumber: episode.episodeNumber,
+      pageUrl: episode.url,
+      sourceUrl: source?.url ?? "",
+      sourceType: source?.sourceType ?? "hls"
+    };
+  });
+}
+
+function getEmbedId(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    const embedIndex = parts.findIndex((part) => part.toLowerCase() === "embed");
+    return embedIndex >= 0 ? parts[embedIndex + 1] ?? "" : parts.at(-1) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 function scoreMediaSource(item: MediaItem): number {

@@ -645,6 +645,36 @@ code {
   padding: 12px;
 }
 
+.detected-episodes-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.episode-draft-list {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.episode-draft {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  background: #10151e;
+  padding: 10px;
+}
+
+.episode-draft strong {
+  overflow-wrap: anywhere;
+}
+
+.episode-draft span {
+  color: #aeb8c8;
+  font-size: 13px;
+}
+
 .image-preview {
   width: 100%;
   aspect-ratio: 2 / 3;

@@ -22,6 +22,13 @@ type InspectResult = {
   };
   candidates: Candidate[];
   fallbackEmbeds: Candidate[];
+  episodes?: Array<{
+    title: string;
+    episodeNumber: number;
+    pageUrl: string;
+    sourceUrl: string;
+    sourceType: string;
+  }>;
   warnings: string[];
 };
 
@@ -451,6 +458,23 @@ function AdminTabs({ active }: { active: "movies" | "series" }) {
   );
 }
 
+function EpisodeDraftList({ episodes }: { episodes: EpisodeForm[] }) {
+  if (episodes.length === 0) return <div className="empty-state small">ยังไม่พบรายการตอนจากหน้านี้</div>;
+  return (
+    <div className="episode-draft-list">
+      {episodes.map((episode) => (
+        <div className="episode-draft" key={`${episode.episodeNumber}-${episode.pageUrl}`}>
+          <strong>
+            EP.{episode.episodeNumber} {episode.title}
+          </strong>
+          <span>{episode.sourceUrl ? `มี source ${episode.sourceType}` : "มีลิงก์ตอนแล้ว รอตรวจ source รายตอน"}</span>
+          <code>{episode.sourceUrl || episode.pageUrl}</code>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Progress({ progress, busy, status }: { progress: number; busy: boolean; status: string }) {
   return (
     <div className="progress-wrap">
@@ -741,6 +765,7 @@ function SeriesAdminPage() {
   const [episodeForm, setEpisodeForm] = useState<EpisodeForm>(emptyEpisodeForm);
   const [editingEpisodeId, setEditingEpisodeId] = useState<number | undefined>();
   const [episodeSources, setEpisodeSources] = useState<Candidate[]>([]);
+  const [detectedEpisodes, setDetectedEpisodes] = useState<EpisodeForm[]>([]);
   const [seriesNotice, setSeriesNotice] = useState<Notice>({ tone: "idle", text: "" });
   const [episodeNotice, setEpisodeNotice] = useState<Notice>({ tone: "idle", text: "" });
   const [busy, setBusy] = useState(false);
@@ -790,6 +815,7 @@ function SeriesAdminPage() {
       if (!response.ok) throw new Error(data.error || "ตรวจสอบซีรีส์ไม่สำเร็จ");
       const source = data.candidates[0];
       const nextCategory = inferCategory(data.metadata.title, data.metadata.description);
+      const detected = buildEpisodeDrafts(data, source, seriesUrl.trim());
       setSeriesForm({
         title: data.metadata.title || "",
         description: data.metadata.description || "",
@@ -798,23 +824,13 @@ function SeriesAdminPage() {
         status: "draft",
         pageUrl: data.pageUrl || seriesUrl.trim()
       });
-      setEpisodeForm({
-        ...emptyEpisodeForm,
-        episodeNumber: 1,
-        title: source ? data.metadata.title || "ตอนที่ 1" : "ตอนที่ 1",
-        description: data.metadata.description || "",
-        thumbnail: data.metadata.thumbnail || "",
-        pageUrl: data.pageUrl || seriesUrl.trim(),
-        sourceUrl: source?.url ?? "",
-        sourceType: source?.sourceType ?? "hls"
-      });
+      setDetectedEpisodes(detected);
+      setEpisodeForm(detected[0] ?? emptyEpisodeForm);
       setEpisodeSources(data.candidates);
       setEditingEpisodeId(undefined);
       setSeriesNotice({
         tone: "success",
-        text: source
-          ? `ดึงข้อมูลซีรีส์แล้ว และเจอ source ในหน้านี้ ${data.candidates.length} รายการ`
-          : "ดึงข้อมูลซีรีส์แล้ว ถัดไปให้บันทึกซีรีส์ แล้ววางลิงก์รายตอนเพื่อตรวจ source"
+        text: `ดึงข้อมูลซีรีส์แล้ว พบตอน ${detected.length} ตอน และเจอ source ${data.candidates.length} รายการ`
       });
     } catch (error) {
       setSeriesNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
@@ -830,6 +846,7 @@ function SeriesAdminPage() {
     setEpisodeForm(emptyEpisodeForm);
     setEditingEpisodeId(undefined);
     setEpisodeSources([]);
+    setDetectedEpisodes([]);
     setSeriesNotice({ tone: "idle", text: "" });
     setEpisodeNotice({ tone: "idle", text: "" });
   }
@@ -840,6 +857,7 @@ function SeriesAdminPage() {
     setEpisodeForm(nextEpisodeForm(item));
     setEditingEpisodeId(undefined);
     setEpisodeSources([]);
+    setDetectedEpisodes([]);
     setSeriesNotice({ tone: "idle", text: "" });
     setEpisodeNotice({ tone: "idle", text: "" });
   }
@@ -954,6 +972,28 @@ function SeriesAdminPage() {
       await loadSeries(selectedSeries.id);
       const refreshed = seriesList.find((item) => item.id === selectedSeries.id) ?? selectedSeries;
       setEpisodeForm(nextEpisodeForm(refreshed));
+    } catch (error) {
+      setEpisodeNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  async function saveDetectedEpisodes() {
+    if (!selectedSeries || detectedEpisodes.length === 0) return;
+    setEpisodeNotice({ tone: "loading", text: `กำลังบันทึก ${detectedEpisodes.length} ตอน...` });
+    try {
+      for (const episode of detectedEpisodes) {
+        const response = await fetch(`/api/series/${selectedSeries.id}/episodes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(episode)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(translateError(data.error || `บันทึกตอนที่ ${episode.episodeNumber} ไม่สำเร็จ`));
+      }
+      setEpisodeNotice({ tone: "success", text: `บันทึกตอนที่ตรวจพบแล้ว ${detectedEpisodes.length} ตอน` });
+      setDetectedEpisodes([]);
+      await loadSeries(selectedSeries.id);
+      setEpisodeForm(nextEpisodeForm(selectedSeries));
     } catch (error) {
       setEpisodeNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
     }
@@ -1092,7 +1132,10 @@ function SeriesAdminPage() {
           {hasSeriesDraft && !selectedSeries && (
             <div className="panel empty-guide">
               <h2>บันทึกซีรีส์ก่อนเพิ่มตอน</h2>
-              <p>หลังบันทึกแล้ว ระบบจะเปิดส่วนเพิ่มตอนให้วางลิงก์รายตอนและตรวจ source แยกแต่ละตอน</p>
+              <p>
+                ตรวจพบ {detectedEpisodes.length} ตอนจาก URL นี้ หลังบันทึกซีรีส์แล้วจะสามารถบันทึกตอนทั้งหมดเข้าเรื่องนี้ได้
+              </p>
+              <EpisodeDraftList episodes={detectedEpisodes} />
             </div>
           )}
 
@@ -1182,6 +1225,19 @@ function SeriesAdminPage() {
                 <span>วางลิงก์รายตอน กดตรวจสอบตอน แล้วบันทึกเข้าซีรีส์นี้</span>
                 {episodeNotice.text && <div className={`save-notice ${episodeNotice.tone}`}>{episodeNotice.text}</div>}
               </div>
+            </div>
+          )}
+
+          {selectedSeries && detectedEpisodes.length > 0 && (
+            <div className="panel detected-episodes-panel">
+              <div className="panel-head">
+                <h2>ตอนที่ตรวจพบจาก URL</h2>
+                <span className="count-pill">{detectedEpisodes.length} ตอน</span>
+              </div>
+              <EpisodeDraftList episodes={detectedEpisodes} />
+              <button className="primary-save" onClick={saveDetectedEpisodes} disabled={episodeNotice.tone === "loading"}>
+                บันทึกตอนที่ตรวจพบทั้งหมด
+              </button>
             </div>
           )}
         </div>
@@ -1541,6 +1597,35 @@ function episodeToForm(episode: EpisodeRecord): EpisodeForm {
     sourceType: episode.sourceType || "hls",
     status: episode.status || "draft"
   };
+}
+
+function buildEpisodeDrafts(result: InspectResult, firstSource: Candidate | undefined, fallbackUrl: string): EpisodeForm[] {
+  const detected = result.episodes ?? [];
+  if (detected.length === 0) {
+    return [
+      {
+        ...emptyEpisodeForm,
+        episodeNumber: 1,
+        title: firstSource ? result.metadata.title || "ตอนที่ 1" : "ตอนที่ 1",
+        description: result.metadata.description || "",
+        thumbnail: result.metadata.thumbnail || "",
+        pageUrl: result.pageUrl || fallbackUrl,
+        sourceUrl: firstSource?.url ?? "",
+        sourceType: firstSource?.sourceType ?? "hls"
+      }
+    ];
+  }
+
+  return detected.map((episode) => ({
+    ...emptyEpisodeForm,
+    episodeNumber: episode.episodeNumber,
+    title: episode.title || `ตอนที่ ${episode.episodeNumber}`,
+    description: result.metadata.description || "",
+    thumbnail: result.metadata.thumbnail || "",
+    pageUrl: episode.pageUrl || result.pageUrl || fallbackUrl,
+    sourceUrl: episode.sourceUrl || "",
+    sourceType: episode.sourceType || "hls"
+  }));
 }
 
 function nextEpisodeForm(series: SeriesRecord): EpisodeForm {
