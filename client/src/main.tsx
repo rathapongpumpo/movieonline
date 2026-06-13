@@ -475,6 +475,28 @@ function EpisodeDraftList({ episodes }: { episodes: EpisodeForm[] }) {
   );
 }
 
+function SeriesInspectSummary({ form, episodes, sourceCount }: { form: SeriesForm; episodes: EpisodeForm[]; sourceCount: number }) {
+  const withSource = episodes.filter((episode) => episode.sourceUrl.trim()).length;
+  return (
+    <div className="series-summary">
+      <ImagePreview src={form.poster} title={form.title} />
+      <div className="series-summary-copy">
+        <span className="category-kicker">{displayCategory(form.category)}</span>
+        <h3>{form.title || "ยังไม่มีชื่อซีรีส์"}</h3>
+        <p>{form.description || "ไม่มีรายละเอียด"}</p>
+        <div className="summary-metrics">
+          <span>{episodes.length} ตอน</span>
+          <span>{withSource} ตอนมี source แล้ว</span>
+          <span>{sourceCount} direct source</span>
+        </div>
+      </div>
+      <div className="series-summary-episodes">
+        <EpisodeDraftList episodes={episodes} />
+      </div>
+    </div>
+  );
+}
+
 function Progress({ progress, busy, status }: { progress: number; busy: boolean; status: string }) {
   return (
     <div className="progress-wrap">
@@ -769,6 +791,8 @@ function SeriesAdminPage() {
   const [seriesNotice, setSeriesNotice] = useState<Notice>({ tone: "idle", text: "" });
   const [episodeNotice, setEpisodeNotice] = useState<Notice>({ tone: "idle", text: "" });
   const [busy, setBusy] = useState(false);
+  const [showSeriesEditor, setShowSeriesEditor] = useState(false);
+  const [showEpisodeEditor, setShowEpisodeEditor] = useState(false);
 
   useEffect(() => {
     loadSeries();
@@ -805,6 +829,8 @@ function SeriesAdminPage() {
     setSeriesNotice({ tone: "loading", text: "กำลังตรวจสอบหน้าซีรีส์และดึงข้อมูล..." });
     setEpisodeNotice({ tone: "idle", text: "" });
     setEpisodeSources([]);
+    setShowSeriesEditor(false);
+    setShowEpisodeEditor(false);
     try {
       const response = await fetch("/api/admin/inspect", {
         method: "POST",
@@ -824,8 +850,8 @@ function SeriesAdminPage() {
         status: "draft",
         pageUrl: data.pageUrl || seriesUrl.trim()
       });
-      setDetectedEpisodes(detected);
-      setEpisodeForm(detected[0] ?? emptyEpisodeForm);
+    setDetectedEpisodes(detected);
+    setEpisodeForm(detected[0] ?? emptyEpisodeForm);
       setEpisodeSources(data.candidates);
       setEditingEpisodeId(undefined);
       setSeriesNotice({
@@ -847,6 +873,8 @@ function SeriesAdminPage() {
     setEditingEpisodeId(undefined);
     setEpisodeSources([]);
     setDetectedEpisodes([]);
+    setShowSeriesEditor(false);
+    setShowEpisodeEditor(false);
     setSeriesNotice({ tone: "idle", text: "" });
     setEpisodeNotice({ tone: "idle", text: "" });
   }
@@ -858,6 +886,8 @@ function SeriesAdminPage() {
     setEditingEpisodeId(undefined);
     setEpisodeSources([]);
     setDetectedEpisodes([]);
+    setShowSeriesEditor(false);
+    setShowEpisodeEditor(false);
     setSeriesNotice({ tone: "idle", text: "" });
     setEpisodeNotice({ tone: "idle", text: "" });
   }
@@ -892,6 +922,41 @@ function SeriesAdminPage() {
       setEditingEpisodeId(undefined);
       setEpisodeSources([]);
       await loadSeries(data.series.id);
+    } catch (error) {
+      setSeriesNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  async function saveSeriesAndDetectedEpisodes() {
+    if (!seriesForm.title.trim()) {
+      setSeriesNotice({ tone: "error", text: "กรุณาตรวจสอบ URL หรือระบุชื่อซีรีส์ก่อนบันทึก" });
+      return;
+    }
+    setSeriesNotice({ tone: "loading", text: `กำลังบันทึกซีรีส์พร้อม ${detectedEpisodes.length} ตอน...` });
+    try {
+      const seriesResponse = await fetch("/api/series", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(seriesForm)
+      });
+      const seriesData = await seriesResponse.json();
+      if (!seriesResponse.ok) throw new Error(translateError(seriesData.error || "บันทึกซีรีส์ไม่สำเร็จ"));
+
+      for (const episode of detectedEpisodes) {
+        const episodeResponse = await fetch(`/api/series/${seriesData.series.id}/episodes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(episode)
+        });
+        const episodeData = await episodeResponse.json().catch(() => ({}));
+        if (!episodeResponse.ok) throw new Error(translateError(episodeData.error || `บันทึกตอนที่ ${episode.episodeNumber} ไม่สำเร็จ`));
+      }
+
+      setSeriesNotice({ tone: "success", text: `บันทึกซีรีส์และตอนทั้งหมดแล้ว (${detectedEpisodes.length} ตอน)` });
+      setDetectedEpisodes([]);
+      setShowSeriesEditor(false);
+      setShowEpisodeEditor(false);
+      await loadSeries(seriesData.series.id);
     } catch (error) {
       setSeriesNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
     }
@@ -1061,6 +1126,8 @@ function SeriesAdminPage() {
               </button>
             </div>
             <p>ระบบจะดึงชื่อเรื่อง รูปปก รายละเอียด และ URL ต้นทางมาใส่ฟอร์มให้ก่อนบันทึก</p>
+            {busy && <Progress progress={65} busy={busy} status="กำลังตรวจสอบซีรีส์และค้นหารายการตอน..." />}
+            {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
           </div>
 
           {!hasSeriesDraft && (
@@ -1070,7 +1137,45 @@ function SeriesAdminPage() {
             </div>
           )}
 
-          {hasSeriesDraft && (
+          {hasSeriesDraft && !selectedSeries && !showSeriesEditor && (
+            <div className="panel inspect-summary">
+              <div className="panel-head">
+                <h2>ผลตรวจสอบซีรีส์</h2>
+                <span className="count-pill">{detectedEpisodes.length} ตอน</span>
+              </div>
+              <SeriesInspectSummary form={seriesForm} episodes={detectedEpisodes} sourceCount={episodeSources.length} />
+              <div className="decision-actions">
+                <button className="primary-save" onClick={saveSeriesAndDetectedEpisodes} disabled={seriesNotice.tone === "loading"}>
+                  บันทึกซีรีส์และตอนทั้งหมด
+                </button>
+                <button className="subtle-button" onClick={() => setShowSeriesEditor(true)}>
+                  แก้ไขรายละเอียด
+                </button>
+              </div>
+              {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
+            </div>
+          )}
+
+          {selectedSeries && !showSeriesEditor && (
+            <div className="panel inspect-summary">
+              <div className="panel-head">
+                <h2>ซีรีส์ที่เลือก</h2>
+                <span className="count-pill">{selectedSeries.episodes.length} ตอน</span>
+              </div>
+              <SeriesInspectSummary form={seriesForm} episodes={selectedSeries.episodes.map(episodeToForm)} sourceCount={0} />
+              <div className="decision-actions">
+                <button className="primary-save" onClick={() => setShowEpisodeEditor(true)}>
+                  เพิ่มตอนเอง
+                </button>
+                <button className="subtle-button" onClick={() => setShowSeriesEditor(true)}>
+                  แก้ไขข้อมูลซีรีส์
+                </button>
+              </div>
+              {seriesNotice.text && <div className={`save-notice ${seriesNotice.tone}`}>{seriesNotice.text}</div>}
+            </div>
+          )}
+
+          {hasSeriesDraft && showSeriesEditor && (
             <div className="panel editor-panel">
               <div className="panel-head">
                 <h2>{selectedSeriesId ? `แก้ไขซีรีส์ #${selectedSeriesId}` : "ตรวจข้อมูลซีรีส์ก่อนบันทึก"}</h2>
@@ -1129,17 +1234,7 @@ function SeriesAdminPage() {
             </div>
           )}
 
-          {hasSeriesDraft && !selectedSeries && (
-            <div className="panel empty-guide">
-              <h2>บันทึกซีรีส์ก่อนเพิ่มตอน</h2>
-              <p>
-                ตรวจพบ {detectedEpisodes.length} ตอนจาก URL นี้ หลังบันทึกซีรีส์แล้วจะสามารถบันทึกตอนทั้งหมดเข้าเรื่องนี้ได้
-              </p>
-              <EpisodeDraftList episodes={detectedEpisodes} />
-            </div>
-          )}
-
-          {selectedSeries && (
+          {selectedSeries && showEpisodeEditor && (
             <div className="panel editor-panel">
               <div className="panel-head">
                 <h2>{editingEpisodeId ? `แก้ไขตอน #${editingEpisodeId}` : "เพิ่มตอน"}</h2>
@@ -1224,6 +1319,9 @@ function SeriesAdminPage() {
                 </button>
                 <span>วางลิงก์รายตอน กดตรวจสอบตอน แล้วบันทึกเข้าซีรีส์นี้</span>
                 {episodeNotice.text && <div className={`save-notice ${episodeNotice.tone}`}>{episodeNotice.text}</div>}
+                <button className="subtle-button" onClick={() => setShowEpisodeEditor(false)}>
+                  ปิดฟอร์มเพิ่มตอน
+                </button>
               </div>
             </div>
           )}

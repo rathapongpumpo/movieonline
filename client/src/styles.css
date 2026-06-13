@@ -650,6 +650,61 @@ code {
   gap: 14px;
 }
 
+.inspect-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.series-summary {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.series-summary > .image-preview,
+.series-summary > .image-fallback {
+  min-height: 198px;
+}
+
+.series-summary-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.series-summary-copy h3 {
+  font-size: 22px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.summary-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-metrics span {
+  border-radius: 999px;
+  background: #242b38;
+  color: #d8deea;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.series-summary-episodes {
+  grid-column: 1 / -1;
+}
+
+.decision-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 10px;
+  align-items: stretch;
+}
+
 .episode-draft-list {
   display: grid;
   gap: 8px;
@@ -923,6 +978,7 @@ code {
   .inspect-row,
   .editor-grid,
   .episode-toolbar,
+  .decision-actions,
   .library-toolbar,
   .pagination,
   .catalog-actions {
@@ -936,6 +992,15 @@ code {
 
   .thumb-review {
     width: min(190px, 100%);
+  }
+
+  .series-summary {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .series-summary > .image-preview,
+  .series-summary > .image-fallback {
+    min-height: 144px;
   }
 
   .preview-panel.compact .player-video,

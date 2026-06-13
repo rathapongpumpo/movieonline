@@ -866,14 +866,16 @@ Functional requirements:
 | FR-SE01 | ระบบต้องสร้าง series master ได้ เช่น title, description, poster, backdrop, category, year, status | Must |
 | FR-SE02 | หน้า series admin ต้องเริ่มจากการวาง URL หน้าซีรีส์แล้วกดตรวจสอบ เพื่อดึง metadata อัตโนมัติ ไม่ใช่เริ่มจากการกรอกมืออย่างเดียว | Must |
 | FR-SE03 | หน้า series admin ต้องไม่โชว์ฟอร์มกรอกมือเต็มรูปแบบตั้งแต่แรก ต้องโชว์หลังตรวจสอบ URL สำเร็จหรือหลังเลือกซีรีส์เดิมจากรายการเท่านั้น | Must |
-| FR-SE04 | ระบบต้องสร้าง season ได้ หรือรองรับ series ที่ไม่มี season ชัดเจน | Should |
-| FR-SE05 | ระบบต้องเพิ่ม episode ได้หลายรายการ | Must |
-| FR-SE06 | Episode ต้องมี title, episode number, source URL, source type, thumbnail, runtime, status | Must |
-| FR-SE07 | Episode แต่ละตอนต้อง inspect source แยกได้จาก URL รายตอน | Must |
-| FR-SE08 | เมื่อตรวจ URL หน้าซีรีส์ ระบบต้องพยายามดึงรายการตอนจากหน้าเว็บ เช่น EP.1-8 แล้วเตรียม episode draft หลายรายการ ไม่ใช่สร้างเฉพาะตอนที่ 1 เสมอ | Must |
-| FR-SE09 | ต้องมีปุ่ม preview source ของแต่ละ episode | Must |
-| FR-SE10 | ต้อง reorder episode ได้ | Should |
-| FR-SE11 | ต้อง publish/unpublish ราย episode ได้ | Should |
+| FR-SE04 | หลังตรวจสอบ URL สำเร็จ หน้า series admin ต้องแสดง summary ที่ตัดสินใจง่ายก่อน ไม่โยนฟอร์มยาวและปุ่มจำนวนมากให้ผู้ใช้ทันที | Must |
+| FR-SE05 | Flow ใหม่ควรมีปุ่มหลักเดียวสำหรับบันทึกซีรีส์พร้อมตอนที่ตรวจพบทั้งหมด | Must |
+| FR-SE06 | ระบบต้องสร้าง season ได้ หรือรองรับ series ที่ไม่มี season ชัดเจน | Should |
+| FR-SE07 | ระบบต้องเพิ่ม episode ได้หลายรายการ | Must |
+| FR-SE08 | Episode ต้องมี title, episode number, source URL, source type, thumbnail, runtime, status | Must |
+| FR-SE09 | Episode แต่ละตอนต้อง inspect source แยกได้จาก URL รายตอน | Must |
+| FR-SE10 | เมื่อตรวจ URL หน้าซีรีส์ ระบบต้องพยายามดึงรายการตอนจากหน้าเว็บ เช่น EP.1-8 แล้วเตรียม episode draft หลายรายการ ไม่ใช่สร้างเฉพาะตอนที่ 1 เสมอ | Must |
+| FR-SE11 | ต้องมีปุ่ม preview source ของแต่ละ episode | Must |
+| FR-SE12 | ต้อง reorder episode ได้ | Should |
+| FR-SE13 | ต้อง publish/unpublish ราย episode ได้ | Should |
 
 UX ที่ต้องการ:
 
