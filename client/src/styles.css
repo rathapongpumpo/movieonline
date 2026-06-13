@@ -198,7 +198,7 @@ p {
 
 .inspect-row {
   display: grid;
-  grid-template-columns: 1fr 112px;
+  grid-template-columns: 1fr minmax(132px, 160px);
   gap: 10px;
 }
 

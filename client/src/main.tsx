@@ -736,6 +736,7 @@ function LibraryPanel({
 function SeriesAdminPage() {
   const [seriesList, setSeriesList] = useState<SeriesRecord[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | undefined>();
+  const [seriesUrl, setSeriesUrl] = useState("");
   const [seriesForm, setSeriesForm] = useState<SeriesForm>(emptySeriesForm);
   const [episodeForm, setEpisodeForm] = useState<EpisodeForm>(emptyEpisodeForm);
   const [editingEpisodeId, setEditingEpisodeId] = useState<number | undefined>();
@@ -768,7 +769,61 @@ function SeriesAdminPage() {
     }
   }
 
+  async function inspectSeriesPage() {
+    if (!seriesUrl.trim()) {
+      setSeriesNotice({ tone: "error", text: "กรุณาวาง URL หน้าซีรีส์ก่อนตรวจสอบ" });
+      return;
+    }
+    setBusy(true);
+    setSelectedSeriesId(undefined);
+    setSeriesNotice({ tone: "loading", text: "กำลังตรวจสอบหน้าซีรีส์และดึงข้อมูล..." });
+    setEpisodeNotice({ tone: "idle", text: "" });
+    setEpisodeSources([]);
+    try {
+      const response = await fetch("/api/admin/inspect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: seriesUrl.trim() })
+      });
+      const data = (await response.json()) as InspectResult & { error?: string };
+      if (!response.ok) throw new Error(data.error || "ตรวจสอบซีรีส์ไม่สำเร็จ");
+      const source = data.candidates[0];
+      const nextCategory = inferCategory(data.metadata.title, data.metadata.description);
+      setSeriesForm({
+        title: data.metadata.title || "",
+        description: data.metadata.description || "",
+        poster: data.metadata.thumbnail || "",
+        category: nextCategory === "ยังไม่จัดหมวด" ? "ซีรีส์" : nextCategory,
+        status: "draft",
+        pageUrl: data.pageUrl || seriesUrl.trim()
+      });
+      setEpisodeForm({
+        ...emptyEpisodeForm,
+        episodeNumber: 1,
+        title: source ? data.metadata.title || "ตอนที่ 1" : "ตอนที่ 1",
+        description: data.metadata.description || "",
+        thumbnail: data.metadata.thumbnail || "",
+        pageUrl: data.pageUrl || seriesUrl.trim(),
+        sourceUrl: source?.url ?? "",
+        sourceType: source?.sourceType ?? "hls"
+      });
+      setEpisodeSources(data.candidates);
+      setEditingEpisodeId(undefined);
+      setSeriesNotice({
+        tone: "success",
+        text: source
+          ? `ดึงข้อมูลซีรีส์แล้ว และเจอ source ในหน้านี้ ${data.candidates.length} รายการ`
+          : "ดึงข้อมูลซีรีส์แล้ว ถัดไปให้บันทึกซีรีส์ แล้ววางลิงก์รายตอนเพื่อตรวจ source"
+      });
+    } catch (error) {
+      setSeriesNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function startNewSeries() {
+    setSeriesUrl("");
     setSelectedSeriesId(undefined);
     setSeriesForm(emptySeriesForm);
     setEpisodeForm(emptyEpisodeForm);
@@ -936,12 +991,30 @@ function SeriesAdminPage() {
 
       <section className="series-admin-grid">
         <div className="admin-left">
+          <div className="panel import-panel">
+            <div className="panel-head">
+              <h2>นำเข้าซีรีส์จาก URL</h2>
+              <button className="subtle-button" onClick={startNewSeries}>
+                เริ่มใหม่
+              </button>
+            </div>
+            <div className="inspect-row">
+              <input
+                value={seriesUrl}
+                onChange={(event) => setSeriesUrl(event.target.value)}
+                placeholder="วางลิงก์หน้าซีรีส์ เช่น https://example.com/series-name/"
+              />
+              <button disabled={busy || !seriesUrl.trim()} onClick={inspectSeriesPage}>
+                ตรวจสอบซีรีส์
+              </button>
+            </div>
+            <p>ระบบจะดึงชื่อเรื่อง รูปปก รายละเอียด และ URL ต้นทางมาใส่ฟอร์มให้ก่อนบันทึก</p>
+          </div>
+
           <div className="panel editor-panel">
             <div className="panel-head">
               <h2>{selectedSeriesId ? `แก้ไขซีรีส์ #${selectedSeriesId}` : "เพิ่มซีรีส์ใหม่"}</h2>
-              <button className="subtle-button" onClick={startNewSeries}>
-                ซีรีส์ใหม่
-              </button>
+              <span className="count-pill">{selectedSeriesId ? "โหมดแก้ไข" : "รอบันทึก"}</span>
             </div>
             <div className="editor-grid">
               <label className="wide">
