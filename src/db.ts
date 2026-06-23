@@ -237,6 +237,11 @@ export function listVideos(query: VideoQuery = {}): VideoPage {
   };
 }
 
+export function listAllVideos(): VideoRecord[] {
+  const rows = db.prepare("SELECT * FROM videos ORDER BY created_at DESC, id DESC").all() as Record<string, unknown>[];
+  return rows.map(rowToVideo);
+}
+
 export function getVideo(id: number): VideoRecord | undefined {
   const row = db.prepare("SELECT * FROM videos WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   return row ? rowToVideo(row) : undefined;
@@ -378,6 +383,13 @@ export function listEpisodes(seriesId: number): EpisodeRecord[] {
   const rows = db
     .prepare("SELECT * FROM episodes WHERE series_id = ? ORDER BY episode_number ASC, id ASC")
     .all(seriesId) as Record<string, unknown>[];
+  return rows.map(rowToEpisode);
+}
+
+export function listAllEpisodes(): EpisodeRecord[] {
+  const rows = db
+    .prepare("SELECT * FROM episodes ORDER BY series_id ASC, episode_number ASC, id ASC")
+    .all() as Record<string, unknown>[];
   return rows.map(rowToEpisode);
 }
 

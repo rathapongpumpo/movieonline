@@ -116,6 +116,14 @@ type Notice = {
   text: string;
 };
 
+type GoogleSheetsExportResult = {
+  spreadsheetUrl: string;
+  videos: number;
+  series: number;
+  episodes: number;
+  categories: number;
+};
+
 const emptyForm: VideoForm = {
   title: "",
   description: "",
@@ -358,6 +366,7 @@ function AdminPage() {
         <div className="admin-stats">
           <Stat label="ทั้งหมด" value={total} />
           <Stat label="หมวดหมู่" value={categories.length} />
+          <GoogleSheetsExportAction />
           <a className="nav-link" href="/">
             ดูหน้าเว็บ
           </a>
@@ -440,6 +449,34 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="stat">
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function GoogleSheetsExportAction() {
+  const [notice, setNotice] = useState<Notice>({ tone: "idle", text: "" });
+
+  async function exportSheets() {
+    setNotice({ tone: "loading", text: "กำลังส่งออก..." });
+    try {
+      const response = await fetch("/api/admin/export/google-sheets", { method: "POST" });
+      const data = (await response.json().catch(() => ({}))) as Partial<GoogleSheetsExportResult> & { error?: string };
+      if (!response.ok) throw new Error(data.error || "ส่งออก Google Sheet ไม่สำเร็จ");
+      setNotice({
+        tone: "success",
+        text: `ส่งออกแล้ว: หนัง ${data.videos ?? 0}, ซีรีส์ ${data.series ?? 0}, ตอน ${data.episodes ?? 0}`
+      });
+    } catch (error) {
+      setNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  return (
+    <div className="sheet-export">
+      <button className="subtle-button" disabled={notice.tone === "loading"} onClick={exportSheets}>
+        ส่งออก Google Sheet
+      </button>
+      {notice.text && <div className={`sheet-export-notice ${notice.tone}`}>{notice.text}</div>}
     </div>
   );
 }
@@ -1100,6 +1137,7 @@ function SeriesAdminPage() {
         <div className="admin-stats">
           <Stat label="ซีรีส์" value={seriesList.length} />
           <Stat label="ตอน" value={totalEpisodes} />
+          <GoogleSheetsExportAction />
           <a className="nav-link" href="/">
             ดูหน้าเว็บ
           </a>

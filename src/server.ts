@@ -11,6 +11,9 @@ import {
   deleteVideo,
   getSeries,
   getVideo,
+  listAllEpisodes,
+  listAllVideos,
+  listCategories,
   listSeries,
   listVideos,
   updateEpisode,
@@ -20,6 +23,7 @@ import {
   type SeriesInput,
   type VideoInput
 } from "./db.js";
+import { exportLibraryToGoogleSheets } from "./googleSheets.js";
 import { inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
@@ -62,6 +66,22 @@ app.post("/api/admin/inspect", async (req, res) => {
     const url = String(req.body?.url ?? "");
     const result = await inspectSite(url, { maxPages: 1 });
     res.json(buildAdminInspectResult(result));
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.post("/api/admin/export/google-sheets", async (_req, res) => {
+  try {
+    const result = await exportLibraryToGoogleSheets({
+      videos: listAllVideos(),
+      series: listSeries(),
+      episodes: listAllEpisodes(),
+      categories: listCategories()
+    });
+    res.json(result);
   } catch (error) {
     res.status(400).json({
       error: error instanceof Error ? error.message : String(error)

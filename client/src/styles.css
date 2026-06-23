@@ -161,6 +161,38 @@ p {
   font-weight: 800;
 }
 
+.sheet-export {
+  display: grid;
+  gap: 6px;
+  min-width: 178px;
+}
+
+.sheet-export .subtle-button {
+  min-height: 40px;
+}
+
+.sheet-export-notice {
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f5f7fb;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.sheet-export-notice.loading {
+  background: #242b38;
+}
+
+.sheet-export-notice.success {
+  background: #168a4a;
+}
+
+.sheet-export-notice.error {
+  background: #b91c1c;
+}
+
 .admin-dashboard {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -968,6 +1000,10 @@ code {
   }
 
   .admin-stats .nav-link {
+    grid-column: 1 / -1;
+  }
+
+  .sheet-export {
     grid-column: 1 / -1;
   }
 

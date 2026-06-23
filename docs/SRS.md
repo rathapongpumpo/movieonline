@@ -225,6 +225,16 @@ Flow:
 | FR-L05 | ระบบต้องแสดง thumbnail, title, category, source type และ actions | Must |
 | FR-L06 | ระบบต้อง responsive ใช้งานบน desktop, tablet และ mobile ได้ | Must |
 
+### 4.5.1 Google Sheets Export
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-GS01 | ระบบต้องใช้ database เป็นแหล่งข้อมูลหลัก และใช้ Google Sheets เป็นช่องทาง export/sync สำรองเท่านั้น | Must |
+| FR-GS02 | Admin ต้องกดส่งออกข้อมูลไป Google Sheets เองได้จากหน้าแอดมินหนังเดี่ยวและซีรีส์ | Must |
+| FR-GS03 | การส่งออกต้องแยกแท็บข้อมูลอย่างน้อย `Videos`, `Series`, `Episodes`, และ `Categories` เพื่อให้ตรวจสอบหรือส่งต่อทีมงานได้ง่าย | Must |
+| FR-GS04 | ถ้ายังไม่ได้ตั้งค่า Google Sheet credential ระบบต้องแจ้งเตือนชัดเจนและไม่กระทบการบันทึกลง database | Must |
+| FR-GS05 | การส่งออกต้อง overwrite snapshot ล่าสุดของแต่ละแท็บ เพื่อลดข้อมูลซ้ำและทำให้ Sheet ตรงกับ database ปัจจุบัน | Should |
+
 ### 4.6 Frontend Catalog
 
 | ID | Requirement | Priority |
