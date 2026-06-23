@@ -158,6 +158,7 @@ export async function discoverMovieCards(rawUrl: string, limit = 60): Promise<Mo
     await gotoInspectablePage(page, startUrl);
     await page.evaluate("globalThis.__name = globalThis.__name || ((fn) => fn)");
     await page.waitForTimeout(1500);
+    await scrollForLazyCards(page);
 
     const cards = await page.evaluate(() => {
       function clean(value: string | null | undefined) {
@@ -247,6 +248,31 @@ export async function discoverMovieCards(rawUrl: string, limit = 60): Promise<Mo
   } finally {
     await browser?.close();
   }
+}
+
+async function scrollForLazyCards(page: Page): Promise<void> {
+  let previousHeight = 0;
+  let stableRounds = 0;
+
+  for (let index = 0; index < 10; index += 1) {
+    const height = await page.evaluate(() => {
+      const pageHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      window.scrollTo(0, pageHeight);
+      return pageHeight;
+    });
+    await page.waitForTimeout(900);
+
+    if (height === previousHeight) {
+      stableRounds += 1;
+      if (stableRounds >= 2) break;
+    } else {
+      stableRounds = 0;
+      previousHeight = height;
+    }
+  }
+
+  await page.evaluate(() => window.scrollTo(0, 0)).catch(() => undefined);
+  await page.waitForTimeout(500);
 }
 
 export async function inspectSite(rawUrl: string, options: InspectOptions = {}): Promise<InspectResult> {

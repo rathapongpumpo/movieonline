@@ -181,6 +181,7 @@ Flow:
 | FR-A12 | Batch import ต้องแสดงรายการ card ที่พบ ให้ admin เลือก/ยกเลิกเลือกก่อนเริ่ม inspect | Must |
 | FR-A13 | Batch inspect ต้องแสดง progress ตามจำนวนรายการที่ตรวจสอบแล้ว และแยกสถานะพร้อมบันทึก/ต้องตรวจเอง/ผิดพลาด | Must |
 | FR-A14 | Batch save ต้องบันทึกเฉพาะรายการที่เจอ direct source พร้อมใช้งาน และไม่บันทึก fallback embed หรือโฆษณา | Must |
+| FR-A15 | Category card discovery ต้อง scroll/load lazy content ก่อน extract เพื่อให้ได้ card จากทั้งหน้าเท่าที่เว็บโหลดได้ | Must |
 
 ### 4.2 Source Detection และ Filtering
 
