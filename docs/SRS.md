@@ -177,6 +177,10 @@ Flow:
 | FR-A08 | ระบบต้องรองรับกรณีเจอ source มากกว่า 1 รายการ โดยให้ admin เลือกรายการที่จะใช้ | Must |
 | FR-A09 | ระบบต้องแสดงข้อความชัดเจนเมื่อไม่พบ Direct Video Source | Must |
 | FR-A10 | ระบบต้องแสดง fallback embed เฉพาะในส่วนคำเตือน ไม่ปะปนกับ source หลัก | Should |
+| FR-A11 | ระบบต้องรองรับการวาง URL หน้าหมวดหมู่ที่มี card หนัง เพื่อดึงลิงก์หน้าหนังย่อยทั้งหมดในหน้านั้น | Must |
+| FR-A12 | Batch import ต้องแสดงรายการ card ที่พบ ให้ admin เลือก/ยกเลิกเลือกก่อนเริ่ม inspect | Must |
+| FR-A13 | Batch inspect ต้องแสดง progress ตามจำนวนรายการที่ตรวจสอบแล้ว และแยกสถานะพร้อมบันทึก/ต้องตรวจเอง/ผิดพลาด | Must |
+| FR-A14 | Batch save ต้องบันทึกเฉพาะรายการที่เจอ direct source พร้อมใช้งาน และไม่บันทึก fallback embed หรือโฆษณา | Must |
 
 ### 4.2 Source Detection และ Filtering
 
@@ -637,6 +641,7 @@ Library Cards
 2. `POST /api/admin/inspect` กับ URL ที่มีเฉพาะ fallback embed
 3. Create/update/delete video
 4. Pagination/search/category filter
+5. Category card discovery จาก `https://www.24hd.net/category/หนังใหม่2026/` ต้องเจอลิงก์ card หนังหลัก ไม่ใช่เมนูหรือ sidebar
 
 ### 11.3 UI Tests
 

@@ -57,6 +57,20 @@ type VideoPage = {
   categories: CategorySummary[];
 };
 
+type CardCandidate = {
+  url: string;
+  title: string;
+  thumbnail: string;
+  score: number;
+};
+
+type BatchCard = CardCandidate & {
+  selected: boolean;
+  status: "pending" | "inspecting" | "ready" | "review" | "saved" | "error";
+  message: string;
+  form?: VideoForm;
+};
+
 type EpisodeRecord = {
   id: number;
   seriesId: number;
@@ -199,6 +213,11 @@ function AdminPage() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [libraryStatus, setLibraryStatus] = useState("กำลังโหลดคลังหนัง...");
+  const [batchUrl, setBatchUrl] = useState("");
+  const [batchItems, setBatchItems] = useState<BatchCard[]>([]);
+  const [batchNotice, setBatchNotice] = useState<Notice>({ tone: "idle", text: "" });
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchProgress, setBatchProgress] = useState(0);
 
   useEffect(() => {
     loadVideos();
@@ -338,6 +357,174 @@ function AdminPage() {
     await loadVideos();
   }
 
+  async function discoverBatchCards() {
+    if (!batchUrl.trim()) {
+      setBatchNotice({ tone: "error", text: "กรุณาวาง URL หน้าหมวดหมู่ก่อน" });
+      return;
+    }
+    setBatchBusy(true);
+    setBatchProgress(8);
+    setBatchNotice({ tone: "loading", text: "กำลังดึงลิงก์จาก card หนัง..." });
+    setBatchItems([]);
+    try {
+      const response = await fetch("/api/admin/discover-cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: batchUrl.trim(), limit: 80 })
+      });
+      const data = (await response.json()) as { cards?: CardCandidate[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "ดึงรายการจากหน้าหมวดหมู่ไม่สำเร็จ");
+      const items = (data.cards ?? []).map((card) => ({
+        ...card,
+        selected: true,
+        status: "pending" as const,
+        message: "รอตรวจสอบ"
+      }));
+      setBatchItems(items);
+      setBatchProgress(100);
+      setBatchNotice({
+        tone: items.length ? "success" : "error",
+        text: items.length ? `พบ card หนัง ${items.length} รายการ เลือกแล้วกดตรวจสอบที่เลือก` : "ไม่พบ card หนังในหน้านี้"
+      });
+    } catch (error) {
+      setBatchProgress(0);
+      setBatchNotice({ tone: "error", text: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  function toggleBatchItem(url: string, selected: boolean) {
+    setBatchItems((items) => items.map((item) => (item.url === url ? { ...item, selected } : item)));
+  }
+
+  function toggleAllBatchItems(selected: boolean) {
+    setBatchItems((items) => items.map((item) => ({ ...item, selected })));
+  }
+
+  async function inspectBatchCards() {
+    const selectedItems = batchItems.filter((item) => item.selected);
+    if (!selectedItems.length) {
+      setBatchNotice({ tone: "error", text: "กรุณาเลือกรายการอย่างน้อย 1 รายการ" });
+      return;
+    }
+    setBatchBusy(true);
+    setBatchProgress(0);
+    setBatchNotice({ tone: "loading", text: `กำลังตรวจสอบ ${selectedItems.length} รายการ...` });
+
+    let completed = 0;
+    for (const item of selectedItems) {
+      setBatchItems((items) =>
+        items.map((current) => (current.url === item.url ? { ...current, status: "inspecting", message: "กำลังตรวจสอบ source..." } : current))
+      );
+      try {
+        const response = await fetch("/api/admin/inspect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: item.url })
+        });
+        const data = (await response.json()) as InspectResult & { error?: string };
+        if (!response.ok) throw new Error(data.error || "ตรวจสอบไม่สำเร็จ");
+        const source = getDefaultSource(data);
+        const isReady = Boolean(source && data.candidates.length === 1);
+        const prepared: VideoForm | undefined = source
+          ? {
+              title: data.metadata.title || item.title,
+              description: data.metadata.description || "",
+              thumbnail: data.metadata.thumbnail || item.thumbnail,
+              category: inferCategory(data.metadata.title || item.title, data.metadata.description || ""),
+              pageUrl: data.pageUrl || item.url,
+              sourceUrl: source.url,
+              sourceType: source.sourceType
+            }
+          : undefined;
+        setBatchItems((items) =>
+          items.map((current) =>
+            current.url === item.url
+              ? {
+                  ...current,
+                  title: prepared?.title || item.title,
+                  thumbnail: prepared?.thumbnail || item.thumbnail,
+                  status: isReady ? "ready" : "review",
+                  message: isReady ? "พร้อมบันทึก" : formatResultStatus(data),
+                  form: isReady ? prepared : undefined
+                }
+              : current
+          )
+        );
+      } catch (error) {
+        setBatchItems((items) =>
+          items.map((current) =>
+            current.url === item.url
+              ? {
+                  ...current,
+                  status: "error",
+                  message: error instanceof Error ? error.message : String(error)
+                }
+              : current
+          )
+        );
+      } finally {
+        completed += 1;
+        setBatchProgress(Math.round((completed / selectedItems.length) * 100));
+      }
+    }
+
+    setBatchBusy(false);
+    setBatchNotice({ tone: "success", text: "ตรวจสอบชุดนี้เสร็จแล้ว ตรวจรายการพร้อมบันทึกได้เลย" });
+  }
+
+  async function saveReadyBatchCards() {
+    const readyItems = batchItems.filter((item) => item.status === "ready" && item.form);
+    if (!readyItems.length) {
+      setBatchNotice({ tone: "error", text: "ยังไม่มีรายการที่พร้อมบันทึก" });
+      return;
+    }
+    setBatchBusy(true);
+    setBatchProgress(0);
+    setBatchNotice({ tone: "loading", text: `กำลังบันทึก ${readyItems.length} รายการ...` });
+
+    let completed = 0;
+    for (const item of readyItems) {
+      try {
+        const response = await fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item.form)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(translateError(data.error || "บันทึกไม่สำเร็จ"));
+        setBatchItems((items) => items.map((current) => (current.url === item.url ? { ...current, status: "saved", message: "บันทึกแล้ว" } : current)));
+      } catch (error) {
+        setBatchItems((items) =>
+          items.map((current) =>
+            current.url === item.url
+              ? {
+                  ...current,
+                  status: "error",
+                  message: error instanceof Error ? error.message : String(error)
+                }
+              : current
+          )
+        );
+      } finally {
+        completed += 1;
+        setBatchProgress(Math.round((completed / readyItems.length) * 100));
+      }
+    }
+
+    setBatchBusy(false);
+    setBatchNotice({ tone: "success", text: "บันทึก batch เสร็จแล้ว" });
+    await loadVideos();
+  }
+
+  function clearBatch() {
+    setBatchUrl("");
+    setBatchItems([]);
+    setBatchNotice({ tone: "idle", text: "" });
+    setBatchProgress(0);
+  }
+
   function applySearch() {
     setPage(1);
     setSearch(searchDraft.trim());
@@ -399,6 +586,21 @@ function AdminPage() {
               />
             )}
           </div>
+
+          <BatchImportPanel
+            url={batchUrl}
+            items={batchItems}
+            notice={batchNotice}
+            busy={batchBusy}
+            progress={batchProgress}
+            onUrl={setBatchUrl}
+            onDiscover={discoverBatchCards}
+            onInspect={inspectBatchCards}
+            onSave={saveReadyBatchCards}
+            onClear={clearBatch}
+            onToggle={toggleBatchItem}
+            onToggleAll={toggleAllBatchItems}
+          />
 
           <VideoEditor form={form} editingId={editingId} notice={notice} canSave={canSave} onChange={setForm} onSave={saveVideo} />
         </div>
@@ -600,6 +802,108 @@ function SourcePicker({
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function BatchImportPanel({
+  url,
+  items,
+  notice,
+  busy,
+  progress,
+  onUrl,
+  onDiscover,
+  onInspect,
+  onSave,
+  onClear,
+  onToggle,
+  onToggleAll
+}: {
+  url: string;
+  items: BatchCard[];
+  notice: Notice;
+  busy: boolean;
+  progress: number;
+  onUrl: (value: string) => void;
+  onDiscover: () => void;
+  onInspect: () => void;
+  onSave: () => void;
+  onClear: () => void;
+  onToggle: (url: string, selected: boolean) => void;
+  onToggleAll: (selected: boolean) => void;
+}) {
+  const selectedCount = items.filter((item) => item.selected).length;
+  const readyCount = items.filter((item) => item.status === "ready").length;
+  const savedCount = items.filter((item) => item.status === "saved").length;
+
+  return (
+    <div className="panel batch-panel">
+      <div className="panel-head">
+        <div>
+          <h2>นำเข้าจากหน้าหมวดหมู่</h2>
+          <p>ดึงลิงก์จาก card หนังในหน้านั้น แล้วตรวจสอบ direct source เป็นชุด</p>
+        </div>
+        <button className="subtle-button" disabled={busy} onClick={onClear}>
+          ล้างชุดนี้
+        </button>
+      </div>
+
+      <div className="inspect-row">
+        <input value={url} onChange={(event) => onUrl(event.target.value)} placeholder="วาง URL หน้าหมวดหมู่ เช่น https://www.24hd.net/category/หนังใหม่2026/" />
+        <button disabled={busy || !url.trim()} onClick={onDiscover}>
+          ดึงรายการ
+        </button>
+      </div>
+
+      {(busy || progress > 0 || notice.text) && <Progress progress={progress} busy={busy} status={notice.text || "พร้อมใช้งาน"} />}
+      {notice.text && !busy && <div className={`save-notice ${notice.tone}`}>{notice.text}</div>}
+
+      {!!items.length && (
+        <>
+          <div className="batch-toolbar">
+            <div className="chips">
+              <span className="chip">{items.length} card</span>
+              <span className="chip">{selectedCount} เลือกไว้</span>
+              <span className="chip good">{readyCount} พร้อมบันทึก</span>
+              <span className="chip">{savedCount} บันทึกแล้ว</span>
+            </div>
+            <div className="row-actions">
+              <button className="subtle-button" disabled={busy} onClick={() => onToggleAll(true)}>
+                เลือกทั้งหมด
+              </button>
+              <button className="subtle-button" disabled={busy} onClick={() => onToggleAll(false)}>
+                ไม่เลือกทั้งหมด
+              </button>
+              <button disabled={busy || selectedCount === 0} onClick={onInspect}>
+                ตรวจสอบที่เลือก
+              </button>
+              <button className="primary-inline" disabled={busy || readyCount === 0} onClick={onSave}>
+                บันทึกที่พร้อม
+              </button>
+            </div>
+          </div>
+
+          <div className="batch-list">
+            {items.map((item) => (
+              <div key={item.url} className={`batch-card ${item.status}`}>
+                <label className="batch-check">
+                  <input type="checkbox" checked={item.selected} disabled={busy || item.status === "saved"} onChange={(event) => onToggle(item.url, event.target.checked)} />
+                </label>
+                <ImagePreview src={item.thumbnail} title={item.title} />
+                <div className="batch-info">
+                  <strong>{item.title}</strong>
+                  <a href={item.url} target="_blank" rel="noreferrer">
+                    {item.url}
+                  </a>
+                  {item.form?.sourceUrl && <code>{item.form.sourceUrl}</code>}
+                </div>
+                <span className={`batch-status ${item.status}`}>{batchStatusText(item)}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -1845,6 +2149,15 @@ function displayStatus(value: string) {
   if (value === "published") return "เผยแพร่";
   if (value === "hidden") return "ซ่อน";
   return "ร่าง";
+}
+
+function batchStatusText(item: BatchCard) {
+  if (item.status === "pending") return "รอตรวจสอบ";
+  if (item.status === "inspecting") return "กำลังตรวจสอบ";
+  if (item.status === "ready") return "พร้อมบันทึก";
+  if (item.status === "review") return item.message || "ต้องตรวจเอง";
+  if (item.status === "saved") return "บันทึกแล้ว";
+  return item.message || "ผิดพลาด";
 }
 
 function translateWarning(value: string) {

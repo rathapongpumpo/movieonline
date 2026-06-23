@@ -10,6 +10,13 @@ export type DiscoveredPage = {
   score: number;
 };
 
+export type MovieCardCandidate = {
+  url: string;
+  title: string;
+  thumbnail: string;
+  score: number;
+};
+
 export type MediaItem = {
   pageUrl: string;
   kind: "image" | "video" | "stream" | "background" | "unknown";
@@ -130,6 +137,113 @@ export async function discoverCandidatePages(rawUrl: string, limit = 24): Promis
       .sort((a, b) => b.score - a.score);
 
     return uniqueBy(candidates, (item) => item.url).slice(0, clamp(limit, 1, 100));
+  } finally {
+    await browser?.close();
+  }
+}
+
+export async function discoverMovieCards(rawUrl: string, limit = 60): Promise<MovieCardCandidate[]> {
+  const startUrl = normalizeInputUrl(rawUrl);
+  const start = new URL(startUrl);
+  let browser: Browser | undefined;
+
+  try {
+    browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      viewport: { width: 1366, height: 1600 },
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36 SiteSourceInspector/0.1"
+    });
+    const page = await context.newPage();
+    await gotoInspectablePage(page, startUrl);
+    await page.evaluate("globalThis.__name = globalThis.__name || ((fn) => fn)");
+    await page.waitForTimeout(1500);
+
+    const cards = await page.evaluate(() => {
+      function clean(value: string | null | undefined) {
+        return (value ?? "").replace(/\s+/g, " ").trim();
+      }
+
+      function backgroundUrl(container: Element): string {
+        const elements = [container, ...Array.from(container.querySelectorAll("*"))];
+        for (const element of elements) {
+          const style = getComputedStyle(element);
+          const match = style.backgroundImage.match(/url\([\"']?(.+?)[\"']?\)/);
+          if (match?.[1]) return match[1];
+        }
+        return "";
+      }
+
+      function imageUrl(container: Element): string {
+        const image = container.querySelector<HTMLImageElement>("img");
+        return (
+          image?.currentSrc ||
+          image?.src ||
+          image?.getAttribute("data-src") ||
+          image?.getAttribute("data-lazy-src") ||
+          image?.getAttribute("data-original") ||
+          backgroundUrl(container)
+        );
+      }
+
+      function bestTitle(container: Element, anchor: HTMLAnchorElement): string {
+        const titleNode = container.querySelector(".elementor-post__title a, h1 a, h2 a, h3 a, h4 a, h1, h2, h3, h4");
+        const title = clean(titleNode?.textContent);
+        if (title) return title;
+        return clean(anchor.innerText || anchor.textContent || anchor.getAttribute("aria-label") || anchor.title);
+      }
+
+      const containers = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".e-loop-item, [data-elementor-type='loop-item'], article, li[class*='post'], div[class*='post-'], .movie, .item"
+        )
+      );
+
+      return containers
+        .map((container) => {
+          const anchors = Array.from(container.querySelectorAll<HTMLAnchorElement>("a[href]"));
+          const anchor = anchors.find((item) => item.href && !item.href.includes("/category/")) ?? anchors[0];
+          if (!anchor) return undefined;
+          const rect = container.getBoundingClientRect();
+          const className = String(container.className || "");
+          return {
+            url: anchor.href || anchor.getAttribute("href") || "",
+            title: bestTitle(container, anchor),
+            thumbnail: imageUrl(container),
+            className,
+            width: rect.width,
+            height: rect.height,
+            text: clean(container.textContent).slice(0, 180)
+          };
+        })
+        .filter(Boolean);
+    });
+
+    await context.close();
+
+    const candidates = cards
+      .map((card) => {
+        const item = card as {
+          url: string;
+          title: string;
+          thumbnail: string;
+          className: string;
+          width: number;
+          height: number;
+          text: string;
+        };
+        const url = normalizeComparableUrl(resolveUrl(item.url, startUrl));
+        return {
+          url,
+          title: cleanCardTitle(item.title || item.text),
+          thumbnail: item.thumbnail ? resolveUrl(item.thumbnail, startUrl) : "",
+          score: scoreMovieCard(url, item, start)
+        };
+      })
+      .filter((card) => card.score > 0 && card.title)
+      .sort((a, b) => b.score - a.score);
+
+    return uniqueBy(candidates, (item) => item.url).slice(0, clamp(limit, 1, 120));
   } finally {
     await browser?.close();
   }
@@ -730,4 +844,51 @@ function scoreCandidatePage(rawUrl: string, text: string, start: URL): number {
   if (segments.length > 3) score -= 20;
 
   return score;
+}
+
+function scoreMovieCard(
+  rawUrl: string,
+  card: { title: string; thumbnail: string; className: string; width: number; height: number; text: string },
+  start: URL
+): number {
+  if (!isInternalUrl(rawUrl, start)) return 0;
+  if (!looksLikeContentDetailUrl(rawUrl, start)) return 0;
+
+  const title = cleanCardTitle(card.title || card.text);
+  if (!title || title.length < 3) return 0;
+
+  const className = card.className.toLowerCase();
+  let score = 20;
+  if (className.includes("e-loop-item") || className.includes("type-post")) score += 100;
+  if (className.includes("post")) score += 25;
+  if (card.thumbnail) score += 35;
+  if (/\((19|20)\d{2}\)|\b(19|20)\d{2}\b/.test(title)) score += 25;
+  if (/ep\.?\s*\d+|season|ซีซั่น/i.test(title)) score += 10;
+  if (card.width >= 120 && card.height >= 180) score += 20;
+  if (/category|menu|contact|request|tag|page\/\d+/i.test(rawUrl)) score -= 100;
+  return score;
+}
+
+function looksLikeContentDetailUrl(rawUrl: string, start: URL): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.hostname !== start.hostname) return false;
+    const path = url.pathname.toLowerCase();
+    if (!path || path === "/") return false;
+    if (/\/(category|tag|author|contact|request|page|wp-content|wp-json)\b/.test(path)) return false;
+    return path.split("/").filter(Boolean).length <= 2;
+  } catch {
+    return false;
+  }
+}
+
+function cleanCardTitle(value: string): string {
+  let title = cleanText(value);
+  for (let index = 0; index < 4; index += 1) {
+    title = title
+      .replace(/^\d+(?:\.\d+)?\s*/u, "")
+      .replace(/^(HD|ZOOM|SoundTrack|พากย์ไทย|ซับไทย|เสียงโรง)\s+/iu, "")
+      .trim();
+  }
+  return title.replace(/\s+(HD|ZOOM|SoundTrack|พากย์ไทย|ซับไทย|เสียงโรง)\s+/giu, " ").trim();
 }

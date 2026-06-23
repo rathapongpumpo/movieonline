@@ -24,7 +24,7 @@ import {
   type VideoInput
 } from "./db.js";
 import { exportLibraryToGoogleSheets } from "./googleSheets.js";
-import { inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
+import { discoverMovieCards, inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -66,6 +66,19 @@ app.post("/api/admin/inspect", async (req, res) => {
     const url = String(req.body?.url ?? "");
     const result = await inspectSite(url, { maxPages: 1 });
     res.json(buildAdminInspectResult(result));
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.post("/api/admin/discover-cards", async (req, res) => {
+  try {
+    const url = String(req.body?.url ?? "");
+    const limit = Number(req.body?.limit ?? 60);
+    const cards = await discoverMovieCards(url, limit);
+    res.json({ cards });
   } catch (error) {
     res.status(400).json({
       error: error instanceof Error ? error.message : String(error)
