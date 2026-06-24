@@ -19,6 +19,7 @@ type InspectResult = {
     title: string;
     thumbnail: string;
     description: string;
+    category?: string;
   };
   candidates: Candidate[];
   fallbackEmbeds: Candidate[];
@@ -332,7 +333,7 @@ function AdminPage() {
         title: data.metadata.title || "",
         description: data.metadata.description || "",
         thumbnail: data.metadata.thumbnail || "",
-        category: inferCategory(data.metadata.title, data.metadata.description),
+        category: data.metadata.category || inferCategory(data.metadata.title, data.metadata.description),
         pageUrl: data.pageUrl || url.trim(),
         sourceUrl: source?.url ?? "",
         sourceType: source?.sourceType ?? ""
@@ -502,7 +503,7 @@ function AdminPage() {
               title: data.metadata.title || item.title,
               description: data.metadata.description || "",
               thumbnail: data.metadata.thumbnail || item.thumbnail,
-              category: inferCategory(data.metadata.title || item.title, data.metadata.description || ""),
+              category: data.metadata.category || inferCategory(data.metadata.title || item.title, data.metadata.description || ""),
               pageUrl: data.pageUrl || item.url,
               sourceUrl: source.url,
               sourceType: source.sourceType
@@ -1251,7 +1252,7 @@ function SeriesAdminPage() {
       const data = (await response.json()) as InspectResult & { error?: string };
       if (!response.ok) throw new Error(data.error || "ตรวจสอบซีรีส์ไม่สำเร็จ");
       const source = data.candidates[0];
-      const nextCategory = inferCategory(data.metadata.title, data.metadata.description);
+      const nextCategory = data.metadata.category || inferCategory(data.metadata.title, data.metadata.description);
       const detected = buildEpisodeDrafts(data, source, seriesUrl.trim());
       setSeriesForm({
         title: data.metadata.title || "",

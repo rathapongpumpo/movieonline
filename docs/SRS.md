@@ -206,6 +206,7 @@ Flow:
 | FR-M04 | ระบบต้องแสดง preview รูป thumbnail ทั้งฝั่ง admin และ frontend | Must |
 | FR-M05 | ระบบต้องให้ admin แก้ metadata เองก่อนบันทึก | Must |
 | FR-M06 | ระบบควรทำ image fallback ถ้ารูปโหลดไม่ได้ | Should |
+| FR-M07 | ระบบต้องดึงหมวดหมู่จากหน้ารายละเอียดหนัง เช่น breadcrumb/category links และใช้กับ batch import ก่อน fallback เดาจากชื่อเรื่อง | Must |
 
 ### 4.4 Save, Edit, Delete
 

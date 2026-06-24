@@ -77,6 +77,7 @@ export type PageMetadata = {
   title: string;
   thumbnail: string;
   description: string;
+  category: string;
 };
 
 export type InspectResult = {
@@ -327,7 +328,7 @@ export async function inspectSite(rawUrl: string, options: InspectOptions = {}):
     startUrl,
     pagesScanned: pages.length,
     pages,
-    metadata: pages[0]?.metadata ?? { title: "", thumbnail: "", description: "" },
+    metadata: pages[0]?.metadata ?? { title: "", thumbnail: "", description: "", category: "" },
     media: uniqueBy(pages.flatMap((page) => page.media), (item) => `${item.pageUrl}|${item.foundBy}|${item.finalUrl}|${item.displayedAs}`),
     episodes: uniqueBy(pages.flatMap((page) => page.episodes), (item) => `${item.episodeNumber}|${item.url}`),
     links: uniqueBy(pages.flatMap((page) => page.links), (item) => `${item.pageUrl}|${item.url}|${item.text}`),
@@ -453,6 +454,59 @@ async function extractDom(page: Page): Promise<DomExtraction> {
         source,
         finalUrl: absoluteUrl(source)
       });
+    };
+    const cleanCategoryText = (value: string) =>
+      value
+        .replace(/\s+\d+$/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    const categoryLabelFromSlug = (slug: string) => {
+      const normalized = slug.replace(/^category-/, "").replace(/-+$/g, "").toLowerCase();
+      const map: Record<string, string> = {
+        "new-movie": "หนังใหม่",
+        netflix: "NETFLIX",
+        "inter-movie": "หนังฝรั่ง",
+        "asia-movie": "หนังเอเชีย",
+        "thai-movie": "หนังไทย",
+        action: "Action บู๊",
+        adventure: "Adventure ผจญภัย",
+        animation: "Animation การ์ตูน",
+        biography: "Biography ชีวิตจริง",
+        comedy: "Comedy ตลก",
+        crime: "Crime อาชญากรรม",
+        documentary: "Documentary สารคดี",
+        family: "Family ครอบครัว",
+        fantasy: "Fantasy จินตนาการ",
+        history: "History ประวัติศาสตร์",
+        horror: "Horror สยองขวัญ",
+        musical: "Musical เพลง",
+        mystery: "Mystery ลึกลับ",
+        romance: "Romance โรแมนติก",
+        "sci-fi": "Sci-Fi วิทยาศาสตร์",
+        thriller: "Thriller ระทึกขวัญ",
+        war: "War สงคราม",
+        western: "Western คาวบอยตะวันตก"
+      };
+      if (map[normalized]) return map[normalized];
+      if (/^\d+$/.test(normalized)) return "";
+      return "";
+    };
+    const categoryFromPostClass = () => {
+      const postContainer = document.querySelector<HTMLElement>(".elementor-location-single[class*='category-'], article[class*='category-'], .hentry[class*='category-']");
+      const className = postContainer?.className || "";
+      const labels = Array.from(String(className).matchAll(/\bcategory-[^\s]+/g))
+        .map((match) => categoryLabelFromSlug(match[0]))
+        .filter(Boolean);
+      return labels[0] || "";
+    };
+    const categoryFromContentLinks = () => {
+      const anchors = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/category/']"));
+      const blockedContainers = "header, nav, footer, aside, .elementor-nav-menu, .ve-cat-widget-div-left, .ve-cat-widget-div-right";
+      const labels = anchors
+        .filter((anchor) => !anchor.closest(blockedContainers))
+        .map((anchor) => cleanCategoryText(anchor.innerText || anchor.textContent || ""))
+        .filter((text) => text && text.length <= 40 && !/เว็บ|ติดต่อ|ขอหนัง|ประเภท|หมวดหมู่/.test(text));
+      return labels[0] || "";
     };
 
     document.querySelectorAll("img").forEach((img) => {
@@ -612,7 +666,8 @@ async function extractDom(page: Page): Promise<DomExtraction> {
       metadata: {
         title: getMeta("meta[property='og:title']") || getMeta("meta[name='twitter:title']") || document.title,
         thumbnail: getMetaUrl("meta[property='og:image']") || getMetaUrl("meta[name='twitter:image']"),
-        description: getMeta("meta[property='og:description']") || getMeta("meta[name='description']") || getMeta("meta[name='twitter:description']")
+        description: getMeta("meta[property='og:description']") || getMeta("meta[name='description']") || getMeta("meta[name='twitter:description']"),
+        category: categoryFromPostClass() || categoryFromContentLinks()
       },
       media,
       episodes,
