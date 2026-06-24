@@ -1,8 +1,10 @@
 import { google } from "googleapis";
 import type { sheets_v4 } from "googleapis";
+import { defaultAdminUsers, type AdminUser } from "./auth.js";
 import type { CategorySummary, EpisodeRecord, SeriesRecord, VideoRecord } from "./db.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+export const DEFAULT_GOOGLE_SHEET_ID = "1tmUDB4qbO9gmhCqo2E-djnNydwqmm6nrHGSQz93kpp0";
 
 export type GoogleSheetsExportInput = {
   videos: VideoRecord[];
@@ -38,11 +40,13 @@ export async function exportLibraryToGoogleSheets(input: GoogleSheetsExportInput
   const exportedAt = new Date().toISOString();
   const spreadsheetId = config.spreadsheetId;
 
-  await ensureSheets(sheets, spreadsheetId, ["Videos", "Series", "Episodes", "Categories"]);
+  await ensureSheets(sheets, spreadsheetId, ["Videos", "Series", "Episodes", "Categories", "AdminUsers", "Ads"]);
   await writeSheet(sheets, spreadsheetId, "Videos", buildVideoRows(input.videos, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Series", buildSeriesRows(input.series, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Episodes", buildEpisodeRows(input.episodes, input.series, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Categories", buildCategoryRows(input, exportedAt));
+  await ensureSheetHeader(sheets, spreadsheetId, "AdminUsers", buildAdminUserRows(defaultAdminUsers, exportedAt)[0]);
+  await ensureSheetHeader(sheets, spreadsheetId, "Ads", buildAdRows(exportedAt)[0]);
 
   return {
     spreadsheetId,
@@ -55,9 +59,34 @@ export async function exportLibraryToGoogleSheets(input: GoogleSheetsExportInput
   };
 }
 
+export async function listGoogleSheetAdminUsers(): Promise<AdminUser[]> {
+  const config = getGoogleSheetsConfig();
+  const auth = new google.auth.JWT({
+    email: config.clientEmail,
+    key: config.privateKey,
+    scopes: SCOPES
+  });
+  const sheets = google.sheets({ version: "v4", auth });
+  await ensureSheets(sheets, config.spreadsheetId, ["AdminUsers"]);
+  await ensureSheetHeader(sheets, config.spreadsheetId, "AdminUsers", buildAdminUserRows(defaultAdminUsers, new Date().toISOString())[0]);
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: "'AdminUsers'!A2:D"
+  });
+
+  return (response.data.values ?? [])
+    .map((row): AdminUser => ({
+      username: String(row[0] ?? "").trim(),
+      password: String(row[1] ?? "").trim(),
+      role: String(row[2] ?? "admin").trim() || "admin",
+      active: String(row[3] ?? "TRUE").trim().toLowerCase() !== "false"
+    }))
+    .filter((user) => user.username && user.password);
+}
+
 function getGoogleSheetsConfig(): ServiceAccountConfig {
-  const spreadsheetId = String(process.env.GOOGLE_SHEET_ID ?? "").trim();
-  if (!spreadsheetId) throw new Error("ยังไม่ได้ตั้งค่า GOOGLE_SHEET_ID");
+  const spreadsheetId = String(process.env.GOOGLE_SHEET_ID ?? DEFAULT_GOOGLE_SHEET_ID).trim();
 
   const jsonConfig = String(process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? "").trim();
   if (jsonConfig) {
@@ -113,6 +142,19 @@ async function writeSheet(sheets: sheets_v4.Sheets, spreadsheetId: string, sheet
     range: `'${sheetName.replace(/'/g, "''")}'!A1`,
     valueInputOption: "RAW",
     requestBody: { values }
+  });
+}
+
+async function ensureSheetHeader(sheets: sheets_v4.Sheets, spreadsheetId: string, sheetName: string, header: string[]) {
+  const range = `'${sheetName.replace(/'/g, "''")}'!A1:Z1`;
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range }).catch(() => undefined);
+  const current = response?.data.values?.[0] ?? [];
+  if (current.length) return;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${sheetName.replace(/'/g, "''")}'!A1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [header] }
   });
 }
 
@@ -216,6 +258,23 @@ function buildCategoryRows(input: GoogleSheetsExportInput, exportedAt: string): 
       String(category.total),
       exportedAt
     ])
+  ];
+}
+
+function buildAdminUserRows(users: AdminUser[], exportedAt: string): string[][] {
+  return [
+    ["username", "password", "role", "active", "exported_at"],
+    ...users.map((user) => [user.username, user.password, user.role, user.active ? "TRUE" : "FALSE", exportedAt])
+  ];
+}
+
+function buildAdRows(exportedAt: string): string[][] {
+  return [
+    ["slot", "title", "image_url", "target_url", "active", "sort_order", "exported_at"],
+    ["top-banner", "", "", "", "FALSE", "10", exportedAt],
+    ["pre-player", "", "", "", "FALSE", "20", exportedAt],
+    ["sidebar-left", "", "", "", "FALSE", "30", exportedAt],
+    ["sidebar-right", "", "", "", "FALSE", "40", exportedAt]
   ];
 }
 

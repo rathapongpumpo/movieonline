@@ -239,6 +239,17 @@ Flow:
 | FR-GS03 | การส่งออกต้องแยกแท็บข้อมูลอย่างน้อย `Videos`, `Series`, `Episodes`, และ `Categories` เพื่อให้ตรวจสอบหรือส่งต่อทีมงานได้ง่าย | Must |
 | FR-GS04 | ถ้ายังไม่ได้ตั้งค่า Google Sheet credential ระบบต้องแจ้งเตือนชัดเจนและไม่กระทบการบันทึกลง database | Must |
 | FR-GS05 | การส่งออกต้อง overwrite snapshot ล่าสุดของแต่ละแท็บ เพื่อลดข้อมูลซ้ำและทำให้ Sheet ตรงกับ database ปัจจุบัน | Should |
+| FR-GS06 | ระบบต้องใช้ Sheet ID `1tmUDB4qbO9gmhCqo2E-djnNydwqmm6nrHGSQz93kpp0` เป็นค่าเริ่มต้นถ้าไม่มี `GOOGLE_SHEET_ID` | Must |
+| FR-GS07 | Export ต้องสร้างแท็บและ header columns ให้อัตโนมัติ รวมถึง `AdminUsers` และ `Ads` สำหรับ config เพิ่มในอนาคต | Must |
+
+### 4.5.2 Admin Login
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| FR-AUTH01 | หน้า `/admin` และ `/admin/series` ต้องมีระบบ login ก่อนใช้งาน | Must |
+| FR-AUTH02 | ค่าเริ่มต้นต้องมี user `rpumpo` และ password `Z24312433z` สำหรับ development bootstrap | Must |
+| FR-AUTH03 | ระบบต้องรองรับการอ่าน admin users จาก Google Sheet แท็บ `AdminUsers` เมื่อมี credential | Should |
+| FR-AUTH04 | Admin APIs ที่ inspect/export/create/update/delete ต้องถูกป้องกันด้วย session cookie | Must |
 
 ### 4.6 Frontend Catalog
 
@@ -261,6 +272,9 @@ Flow:
 | FR-P04 | Player ควรรองรับ DASH `.mpd` หากเพิ่ม library ที่เหมาะสม | Should |
 | FR-P05 | Player ต้องแสดง error เมื่อเล่นไม่ได้ | Must |
 | FR-P06 | Player ควรใช้ library ที่ production-friendly เช่น hls.js, Shaka Player, Video.js หรือ JW Player ตามงบและ license | Should |
+| FR-P07 | Watch page ต้องจัด layout แบบเว็บหนัง มีตำแหน่งโฆษณาด้านบน/ข้าง/ก่อน player และยัง responsive บนมือถือ | Must |
+| FR-P08 | Watch page ต้องลดโอกาสการคัดลอก source URL ด้วยการไม่ render URL ใน DOM, ปิด context menu บน player, และซ่อน endpoint ผ่าน player component เท่าที่เว็บทำได้ | Should |
+| FR-P09 | ระบบต้องรองรับการเปิดใน LINE LIFF โดยมี LIFF initialization hook และ layout ที่ไม่พังใน webview | Should |
 
 ## 5. Non-Functional Requirements
 

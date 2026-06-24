@@ -41,6 +41,7 @@ type VideoRecord = {
   pageUrl: string;
   sourceUrl: string;
   sourceType: string;
+  playbackUrl?: string;
   duration: number | null;
 };
 
@@ -186,11 +187,80 @@ const movieTypes = [
 ];
 
 function App() {
+  useEffect(() => {
+    initializeLiffIfConfigured();
+  }, []);
+
   const path = window.location.pathname;
-  if (path.startsWith("/admin/series")) return <SeriesAdminPage />;
-  if (path.startsWith("/admin")) return <AdminPage />;
+  if (path.startsWith("/admin/series")) return <AdminGate><SeriesAdminPage /></AdminGate>;
+  if (path.startsWith("/admin")) return <AdminGate><AdminPage /></AdminGate>;
   if (path.startsWith("/watch/")) return <WatchPage />;
   return <CatalogPage />;
+}
+
+function AdminGate({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<"loading" | "ready" | "login">("loading");
+  const [username, setUsername] = useState("rpumpo");
+  const [password, setPassword] = useState("");
+  const [notice, setNotice] = useState<Notice>({ tone: "idle", text: "" });
+
+  useEffect(() => {
+    fetch("/api/admin/me")
+      .then((response) => {
+        if (!response.ok) throw new Error("login");
+        return response.json();
+      })
+      .then(() => setStatus("ready"))
+      .catch(() => setStatus("login"));
+  }, []);
+
+  async function login() {
+    setNotice({ tone: "loading", text: "กำลังเข้าสู่ระบบ..." });
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice({ tone: "error", text: data.error || "เข้าสู่ระบบไม่สำเร็จ" });
+      return;
+    }
+    setNotice({ tone: "success", text: "เข้าสู่ระบบแล้ว" });
+    setStatus("ready");
+  }
+
+  if (status === "loading") return <main className="admin-shell"><div className="empty-state">กำลังตรวจสอบสิทธิ์...</div></main>;
+  if (status === "ready") return <>{children}</>;
+
+  return (
+    <main className="login-shell">
+      <section className="login-panel">
+        <h1>เข้าสู่ระบบหลังบ้าน</h1>
+        <p>กรุณาเข้าสู่ระบบก่อนจัดการข้อมูลวิดีโอ</p>
+        <label>
+          ผู้ใช้
+          <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
+        </label>
+        <label>
+          รหัสผ่าน
+          <input
+            value={password}
+            type="password"
+            onChange={(event) => setPassword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") login();
+            }}
+            autoComplete="current-password"
+          />
+        </label>
+        <button className="primary-save" onClick={login} disabled={!username.trim() || !password || notice.tone === "loading"}>
+          เข้าสู่ระบบ
+        </button>
+        {notice.text && <div className={`save-notice ${notice.tone}`}>{notice.text}</div>}
+      </section>
+    </main>
+  );
 }
 
 function AdminPage() {
@@ -1805,9 +1875,6 @@ function CatalogPage() {
             }}
             placeholder="ค้นหาหนัง"
           />
-          <a className="nav-link" href="/admin">
-            หลังบ้าน
-          </a>
         </div>
       </header>
 
@@ -1854,7 +1921,7 @@ function WatchPage() {
   const [status, setStatus] = useState("กำลังโหลด...");
 
   useEffect(() => {
-    fetch(`/api/videos/${encodeURIComponent(id || "")}`)
+    fetch(`/api/watch/${encodeURIComponent(id || "")}`)
       .then((response) => response.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -1870,26 +1937,59 @@ function WatchPage() {
         <a className="nav-link" href="/">
           กลับ
         </a>
-        <a className="nav-link" href="/admin">
-          หลังบ้าน
-        </a>
       </nav>
       {video ? (
-        <section className="watch-grid">
-          <div className="watch-player-panel">
-            <Player source={video.sourceUrl} sourceType={video.sourceType} />
-          </div>
-          <aside className="watch-meta">
-            <ImagePreview src={video.thumbnail} title={video.title} />
-            <span className="category-kicker">{displayCategory(video.category)}</span>
-            <h1>{video.title}</h1>
-            <p>{video.description}</p>
-          </aside>
-        </section>
+        <MovieWatchLayout video={video} />
       ) : (
         <div className="empty-state">{status}</div>
       )}
     </main>
+  );
+}
+
+function MovieWatchLayout({ video }: { video: VideoRecord }) {
+  return (
+    <section className="movie-watch-layout">
+      <AdColumn side="left" />
+      <div className="movie-watch-main">
+        <AdSlot slot="top-wide" />
+        <AdSlot slot="hero-wide" />
+        <AdSlot slot="pre-player" />
+        <h1 className="watch-title-strip">{video.title}</h1>
+        <div className="watch-player-frame">
+          <div className="player-label">ตัวเล่นหลัก</div>
+          <Player source={video.playbackUrl || video.sourceUrl} sourceType={video.sourceType} />
+        </div>
+        <section className="watch-detail-panel">
+          <ImagePreview src={video.thumbnail} title={video.title} />
+          <div>
+            <span className="category-kicker">{displayCategory(video.category)}</span>
+            <h2>{video.title}</h2>
+            <p>{video.description || "ไม่มีรายละเอียด"}</p>
+          </div>
+        </section>
+      </div>
+      <AdColumn side="right" />
+    </section>
+  );
+}
+
+function AdColumn({ side }: { side: "left" | "right" }) {
+  return (
+    <aside className={`ad-column ${side}`}>
+      <AdSlot slot={`${side}-tower-1`} />
+      <AdSlot slot={`${side}-tower-2`} />
+      <AdSlot slot={`${side}-tower-3`} />
+    </aside>
+  );
+}
+
+function AdSlot({ slot }: { slot: string }) {
+  return (
+    <div className={`ad-slot ${slot}`}>
+      <span>พื้นที่โฆษณา</span>
+      <strong>{slot}</strong>
+    </div>
   );
 }
 
@@ -1967,7 +2067,15 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
 
   return (
     <div>
-      <video className="player-video" ref={videoRef} controls playsInline />
+      <video
+        className="player-video"
+        ref={videoRef}
+        controls
+        playsInline
+        controlsList="nodownload noplaybackrate noremoteplayback"
+        disablePictureInPicture
+        onContextMenu={(event) => event.preventDefault()}
+      />
       <div className="player-status">{status}</div>
     </div>
   );
@@ -2175,6 +2283,16 @@ function translateError(value: string) {
   if (value.includes("Blocked sidecar")) return "Source นี้เป็น playlist ย่อย ระบบไม่อนุญาตให้บันทึก";
   if (value.includes("Video not found")) return "ไม่พบวิดีโอ";
   return value;
+}
+
+function initializeLiffIfConfigured() {
+  const win = window as unknown as {
+    liff?: { init: (options: { liffId: string }) => Promise<void> };
+    SSI_LIFF_ID?: string;
+  };
+  const liffId = win.SSI_LIFF_ID || document.querySelector<HTMLMetaElement>("meta[name='liff-id']")?.content || "";
+  if (!liffId || win.liff === undefined) return;
+  win.liff.init({ liffId }).catch(() => undefined);
 }
 
 function useState<T>(initial: T | (() => T)): [T, React.Dispatch<React.SetStateAction<T>>];

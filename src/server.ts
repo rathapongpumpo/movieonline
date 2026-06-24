@@ -3,6 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  clearSessionCookie,
+  createSessionCookie,
+  defaultAdminUsers,
+  getSessionUser,
+  validateAdminCredentials,
+  type AdminUser
+} from "./auth.js";
+import {
   createEpisode,
   createSeries,
   createVideo,
@@ -21,9 +29,10 @@ import {
   updateVideo,
   type EpisodeInput,
   type SeriesInput,
+  type VideoRecord,
   type VideoInput
 } from "./db.js";
-import { exportLibraryToGoogleSheets } from "./googleSheets.js";
+import { exportLibraryToGoogleSheets, listGoogleSheetAdminUsers } from "./googleSheets.js";
 import { discoverMovieCards, inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
 const app = express();
@@ -35,6 +44,48 @@ const reactIndex = path.join(reactRoot, "index.html");
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(reactRoot));
 app.use(express.static(path.join(root, "public")));
+
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const username = String(req.body?.username ?? "").trim();
+    const password = String(req.body?.password ?? "");
+    const user = validateAdminCredentials(await getAdminUsers(), username, password);
+    if (!user) {
+      res.status(401).json({ error: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
+      return;
+    }
+    res.setHeader("Set-Cookie", createSessionCookie(user.username));
+    res.json({ user: { username: user.username, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post("/api/admin/logout", (_req, res) => {
+  res.setHeader("Set-Cookie", clearSessionCookie());
+  res.status(204).end();
+});
+
+app.get("/api/admin/me", (req, res) => {
+  const username = getSessionUser(req.headers.cookie);
+  if (!username) {
+    res.status(401).json({ error: "ยังไม่ได้เข้าสู่ระบบ" });
+    return;
+  }
+  res.json({ user: { username } });
+});
+
+app.use((req, res, next) => {
+  if (!requiresAdmin(req.method, req.path)) {
+    next();
+    return;
+  }
+  if (!getSessionUser(req.headers.cookie)) {
+    res.status(401).json({ error: "กรุณาเข้าสู่ระบบหลังบ้าน" });
+    return;
+  }
+  next();
+});
 
 app.get(["/admin", "/admin/series"], (_req, res) => {
   res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "admin.html"));
@@ -107,7 +158,8 @@ app.get("/api/videos", (req, res) => {
   const pageSize = Number(req.query.pageSize ?? 24);
   const search = String(req.query.search ?? "");
   const category = String(req.query.category ?? "");
-  res.json(listVideos({ page, pageSize, search, category }));
+  const data = listVideos({ page, pageSize, search, category });
+  res.json(getSessionUser(req.headers.cookie) ? data : { ...data, videos: data.videos.map(toPublicVideo) });
 });
 
 app.get("/api/videos/:id", (req, res) => {
@@ -116,7 +168,40 @@ app.get("/api/videos/:id", (req, res) => {
     res.status(404).json({ error: "Video not found" });
     return;
   }
-  res.json({ video });
+  res.json({ video: getSessionUser(req.headers.cookie) ? video : toPublicVideo(video) });
+});
+
+app.get("/api/watch/:id", (req, res) => {
+  const video = getVideo(Number(req.params.id));
+  if (!video) {
+    res.status(404).json({ error: "Video not found" });
+    return;
+  }
+  res.json({
+    video: {
+      ...toPublicVideo(video),
+      sourceType: video.sourceType,
+      playbackUrl: `/api/play/${video.id}`
+    }
+  });
+});
+
+app.get("/api/play/:id", async (req, res) => {
+  const video = getVideo(Number(req.params.id));
+  if (!video) {
+    res.status(404).send("Not found");
+    return;
+  }
+  await proxyMedia(video.sourceUrl, req.headers.range, res);
+});
+
+app.get("/api/play-proxy", async (req, res) => {
+  const target = String(req.query.u ?? "");
+  if (!target.startsWith("http://") && !target.startsWith("https://")) {
+    res.status(400).send("Invalid media URL");
+    return;
+  }
+  await proxyMedia(target, req.headers.range, res);
 });
 
 app.post("/api/videos", (req, res) => {
@@ -234,6 +319,72 @@ app.delete("/api/episodes/:id", (req, res) => {
 app.listen(port, () => {
   console.log(`Site Source Inspector running at http://localhost:${port}`);
 });
+
+async function getAdminUsers(): Promise<AdminUser[]> {
+  try {
+    const sheetUsers = await listGoogleSheetAdminUsers();
+    return [...defaultAdminUsers, ...sheetUsers];
+  } catch {
+    return defaultAdminUsers;
+  }
+}
+
+function requiresAdmin(method: string, pathname: string): boolean {
+  if (pathname === "/api/admin/login" || pathname === "/api/admin/logout" || pathname === "/api/admin/me") return false;
+  if (pathname.startsWith("/api/admin/")) return true;
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method) && /^\/api\/(videos|series|episodes)/.test(pathname)) return true;
+  return false;
+}
+
+function toPublicVideo(video: VideoRecord) {
+  return {
+    ...video,
+    sourceUrl: ""
+  };
+}
+
+async function proxyMedia(targetUrl: string, range: string | undefined, res: express.Response) {
+  try {
+    const response = await fetch(targetUrl, {
+      headers: range ? { range } : undefined,
+      redirect: "follow"
+    });
+    const contentType = response.headers.get("content-type") ?? "";
+    const finalUrl = response.url || targetUrl;
+    res.status(response.status);
+    res.setHeader("Cache-Control", "private, max-age=300");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+
+    if (contentType.includes("mpegurl") || finalUrl.toLowerCase().includes(".m3u8")) {
+      const text = await response.text();
+      res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+      res.send(rewriteHlsPlaylist(text, finalUrl));
+      return;
+    }
+
+    const passHeaders = ["content-type", "content-length", "content-range", "accept-ranges"];
+    for (const header of passHeaders) {
+      const value = response.headers.get(header);
+      if (value) res.setHeader(header, value);
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    res.send(bytes);
+  } catch (error) {
+    res.status(502).send(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function rewriteHlsPlaylist(text: string, playlistUrl: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return line;
+      const absolute = new URL(trimmed, playlistUrl).href;
+      return `/api/play-proxy?u=${encodeURIComponent(absolute)}`;
+    })
+    .join("\n");
+}
 
 function isDirectVideoSource(item: MediaItem): boolean {
   if (!["video", "stream"].includes(item.kind)) return false;
