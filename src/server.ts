@@ -91,6 +91,10 @@ app.get(["/admin", "/admin/series"], (_req, res) => {
   res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "admin.html"));
 });
 
+app.get("/series/:id", (_req, res) => {
+  res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "index.html"));
+});
+
 app.get("/watch/:id", (_req, res) => {
   res.sendFile(fs.existsSync(reactIndex) ? reactIndex : path.join(root, "public", "watch.html"));
 });

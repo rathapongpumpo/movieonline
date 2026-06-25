@@ -231,7 +231,10 @@ Flow:
 | FR-L03 | ระบบต้องค้นหาจาก title, description และ page URL ได้ | Must |
 | FR-L04 | ระบบต้องกรองตาม category ได้ | Must |
 | FR-L05 | ระบบต้องแสดง thumbnail, title, category, source type และ actions | Must |
-| FR-L06 | ระบบต้อง responsive ใช้งานบน desktop, tablet และ mobile ได้ | Must |
+| FR-L06 | Frontend ต้องแยก content type ชัดเจนระหว่างหนังเดี่ยวและซีรีส์ ไม่แสดงซีรีส์หลายตอนปนเป็นหนังเดี่ยวในหน้า watch movie | Must |
+| FR-L07 | หน้า frontend ต้องมีเมนูหลักอย่างน้อย `หนัง`, `ซีรีส์`, และ `หมวดหมู่` เพื่อให้ผู้ใช้เข้าใจโครงสร้างเว็บ | Must |
+| FR-L08 | ซีรีส์ต้องมีหน้า detail/watch ของตัวเองที่แสดงรายการตอนทั้งหมดและให้เลือกเล่นแต่ละตอนได้ | Must |
+| FR-L09 | ระบบต้อง responsive ใช้งานบน desktop, tablet และ mobile ได้ | Must |
 
 ### 4.5.1 Google Sheets Export
 

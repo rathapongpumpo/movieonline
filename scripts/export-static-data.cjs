@@ -8,6 +8,7 @@ const outDir = path.join(root, "client", "public", "data");
 const posterDir = path.join(root, "client", "public", "posters");
 const thumbnailDir = path.join(root, "client", "public", "thumbnails");
 const outFile = path.join(outDir, "videos.json");
+const seriesOutFile = path.join(outDir, "series.json");
 
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(posterDir, { recursive: true });
@@ -15,6 +16,8 @@ fs.mkdirSync(thumbnailDir, { recursive: true });
 
 const db = new Database(dbPath, { readonly: true });
 const rows = db.prepare("SELECT * FROM videos ORDER BY created_at DESC, id DESC").all();
+const seriesRows = db.prepare("SELECT * FROM series ORDER BY updated_at DESC, id DESC").all();
+const episodeRows = db.prepare("SELECT * FROM episodes ORDER BY series_id ASC, episode_number ASC, id ASC").all();
 db.close();
 
 main().catch((error) => {
@@ -70,7 +73,72 @@ async function main() {
     )
   );
 
-  console.log(`Exported ${videos.length} videos to ${path.relative(root, outFile)} (${cachedCount} cached thumbnails)`);
+  const series = [];
+  let cachedSeriesCount = 0;
+  const episodesBySeries = new Map();
+  for (const episode of episodeRows) {
+    const seriesId = Number(episode.series_id);
+    episodesBySeries.set(seriesId, [...(episodesBySeries.get(seriesId) ?? []), episode]);
+  }
+
+  for (const row of seriesRows) {
+    const id = Number(row.id);
+    const title = String(row.title ?? "");
+    const remotePoster = String(row.poster ?? "");
+    const posterFile = `series-${id}.svg`;
+    fs.writeFileSync(path.join(posterDir, posterFile), buildPosterSvg(title, String(row.category ?? "Series"), id + 1000));
+    const cachedPoster = await cacheRemoteThumbnail(`series-${id}`, remotePoster);
+    if (cachedPoster) cachedSeriesCount += 1;
+    series.push({
+      id,
+      title,
+      description: String(row.description ?? ""),
+      poster: cachedPoster || remotePoster,
+      remotePoster,
+      fallbackPoster: `/posters/${posterFile}`,
+      category: String(row.category ?? "Series"),
+      status: String(row.status ?? "draft"),
+      pageUrl: String(row.page_url ?? ""),
+      createdAt: String(row.created_at ?? ""),
+      updatedAt: String(row.updated_at ?? ""),
+      episodes: (episodesBySeries.get(id) ?? []).map((episode) => ({
+        id: Number(episode.id),
+        seriesId: Number(episode.series_id),
+        episodeNumber: Number(episode.episode_number),
+        title: String(episode.title ?? ""),
+        description: String(episode.description ?? ""),
+        thumbnail: String(episode.thumbnail ?? "") || cachedPoster || remotePoster,
+        pageUrl: String(episode.page_url ?? ""),
+        sourceUrl: String(episode.source_url ?? ""),
+        sourceType: String(episode.source_type ?? "hls"),
+        status: String(episode.status ?? "draft")
+      }))
+    });
+  }
+
+  const seriesCategoryMap = new Map();
+  for (const item of series) {
+    const category = item.category || "Series";
+    seriesCategoryMap.set(category, (seriesCategoryMap.get(category) ?? 0) + 1);
+  }
+
+  fs.writeFileSync(
+    seriesOutFile,
+    JSON.stringify(
+      {
+        series,
+        total: series.length,
+        categories: [...seriesCategoryMap.entries()].map(([name, count]) => ({ name, count }))
+      },
+      null,
+      2
+    )
+  );
+
+  console.log(
+    `Exported ${videos.length} videos to ${path.relative(root, outFile)} (${cachedCount} cached thumbnails), ` +
+      `${series.length} series to ${path.relative(root, seriesOutFile)} (${cachedSeriesCount} cached posters)`
+  );
 }
 
 async function cacheRemoteThumbnail(id, remoteUrl) {

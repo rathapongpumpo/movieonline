@@ -60,6 +60,12 @@ type VideoPage = {
   categories: CategorySummary[];
 };
 
+type SeriesPageData = {
+  series: SeriesRecord[];
+  total: number;
+  categories: CategorySummary[];
+};
+
 type CardCandidate = {
   url: string;
   title: string;
@@ -92,6 +98,7 @@ type SeriesRecord = {
   title: string;
   description: string;
   poster: string;
+  fallbackPoster?: string;
   category: string;
   status: string;
   pageUrl: string;
@@ -172,6 +179,36 @@ const emptyForm: VideoForm = {
   sourceType: ""
 };
 
+const legacyWatchToSeries: Record<string, number> = {
+  "29": 17,
+  "30": 18,
+  "32": 19,
+  "33": 20,
+  "34": 21,
+  "35": 22,
+  "36": 23,
+  "37": 33,
+  "38": 24,
+  "39": 25,
+  "58": 26,
+  "59": 34,
+  "60": 35,
+  "61": 27,
+  "62": 28,
+  "63": 29,
+  "64": 30,
+  "65": 31,
+  "66": 17,
+  "67": 18,
+  "68": 32,
+  "69": 19,
+  "70": 20,
+  "71": 21,
+  "72": 22,
+  "73": 23,
+  "74": 33
+};
+
 const emptySeriesForm: SeriesForm = {
   title: "",
   description: "",
@@ -213,7 +250,9 @@ function App() {
   const path = window.location.pathname;
   if (path.startsWith("/admin/series")) return <AdminGate><SeriesAdminPage /></AdminGate>;
   if (path.startsWith("/admin")) return <AdminGate><AdminPage /></AdminGate>;
+  if (path.startsWith("/series/")) return <LiffViewerGate><SeriesWatchPage /></LiffViewerGate>;
   if (path.startsWith("/watch/")) return <LiffViewerGate><WatchPage /></LiffViewerGate>;
+  if (new URLSearchParams(window.location.search).get("type") === "series") return <LiffViewerGate><SeriesCatalogPage /></LiffViewerGate>;
   return <LiffViewerGate><CatalogPage /></LiffViewerGate>;
 }
 
@@ -1968,6 +2007,10 @@ function CatalogPage() {
         <a className="brand" href="/">
           คลังหนัง
         </a>
+        <nav className="main-content-menu" aria-label="content type">
+          <a className="active" href="/">หนัง</a>
+          <a href="/?type=series">ซีรีส์</a>
+        </nav>
         <nav className="category-menu">
           {["All", ...categories.map((item) => item.name)].map((item) => (
             <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
@@ -2061,6 +2104,208 @@ function PosterRail({ name, items }: { name: string; items: VideoRecord[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function SeriesCatalogPage() {
+  const [items, setItems] = useState<SeriesRecord[]>([]);
+  const [categories, setCategories] = useState<CategorySummary[]>([]);
+  const [category, setCategory] = useState("All");
+  const [searchDraft, setSearchDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("กำลังโหลดซีรีส์...");
+
+  useEffect(() => {
+    fetchSeriesPage({ search, category })
+      .then((data) => {
+        setItems(data.series);
+        setCategories(data.categories);
+        setStatus(data.total ? "" : "ไม่พบซีรีส์");
+      })
+      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
+  }, [category, search]);
+
+  const featured = items[0];
+  const grouped = groupSeriesByCategory(items);
+
+  return (
+    <main className="netflix-shell">
+      <header className="catalog-topbar">
+        <a className="brand" href="/">คลังหนัง</a>
+        <nav className="main-content-menu" aria-label="ประเภทคอนเทนต์">
+          <a href="/">หนัง</a>
+          <a className="active" href="/?type=series">ซีรีส์</a>
+        </nav>
+        <nav className="category-menu">
+          {["All", ...categories.map((item) => item.name)].map((item) => (
+            <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
+              {item === "All" ? "ทั้งหมด" : displayCategory(item)}
+            </button>
+          ))}
+        </nav>
+        <div className="catalog-actions">
+          <input
+            value={searchDraft}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") setSearch(searchDraft.trim());
+            }}
+            placeholder="ค้นหาซีรีส์"
+          />
+        </div>
+      </header>
+
+      {featured && (
+        <section className="hero-feature">
+          <ImagePreview src={featured.poster} fallbackSrc={featured.fallbackPoster} title={featured.title} />
+          <div className="hero-copy">
+            <span className="category-kicker">{displayCategory(featured.category)} · {featured.episodes.length} ตอน</span>
+            <h1>{featured.title}</h1>
+            <p>{featured.description}</p>
+            <div className="hero-actions">
+              <a className="play-link" href={`/series/${featured.id}`}>เล่นซีรีส์</a>
+              <span>มีทั้งหมด {items.length} เรื่อง</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="content-rails">
+        {status && <div className="empty-state">{status}</div>}
+        {Object.entries(grouped).map(([name, series]) => (
+          <SeriesRail key={name} name={name} items={series} />
+        ))}
+      </section>
+    </main>
+  );
+}
+
+function SeriesRail({ name, items }: { name: string; items: SeriesRecord[] }) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const update = () => setHasOverflow(row.scrollWidth > row.clientWidth + 2);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(row);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [items.length]);
+
+  function scrollRail(direction: "left" | "right") {
+    const row = rowRef.current;
+    if (!row) return;
+    row.scrollBy({ left: direction === "left" ? -row.clientWidth * 0.82 : row.clientWidth * 0.82, behavior: "smooth" });
+  }
+
+  return (
+    <div className="rail">
+      <div className="rail-head">
+        <h2>{displayCategory(name)}</h2>
+        {hasOverflow && (
+          <div className="rail-controls" aria-label="เลื่อนรายการซีรีส์">
+            <button type="button" onClick={() => scrollRail("left")} aria-label="เลื่อนไปซ้าย">‹</button>
+            <button type="button" onClick={() => scrollRail("right")} aria-label="เลื่อนไปขวา">›</button>
+          </div>
+        )}
+      </div>
+      <div className="poster-row" ref={rowRef}>
+        {items.map((item) => (
+          <a className="poster-card" key={item.id} href={`/series/${item.id}`}>
+            <ImagePreview src={item.poster} fallbackSrc={item.fallbackPoster} title={item.title} />
+            <strong>{item.title}</strong>
+            <small>{item.episodes.length} ตอน</small>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SeriesWatchPage() {
+  const id = window.location.pathname.split("/").filter(Boolean).pop() || "";
+  const [series, setSeries] = useState<SeriesRecord | undefined>();
+  const [selectedEpisode, setSelectedEpisode] = useState<EpisodeRecord | undefined>();
+  const [status, setStatus] = useState("กำลังโหลดซีรีส์...");
+
+  useEffect(() => {
+    fetchSeriesById(id)
+      .then((data) => {
+        if (!data.series) throw new Error(data.error || "ไม่พบซีรีส์");
+        const params = new URLSearchParams(window.location.search);
+        const ep = Number(params.get("ep") || data.series.episodes[0]?.episodeNumber || 1);
+        const episode = data.series.episodes.find((item) => item.episodeNumber === ep) ?? data.series.episodes[0];
+        setSeries(data.series);
+        setSelectedEpisode(episode);
+        setStatus("");
+      })
+      .catch((error) => setStatus(error instanceof Error ? error.message : String(error)));
+  }, [id]);
+
+  function chooseEpisode(episode: EpisodeRecord) {
+    setSelectedEpisode(episode);
+    const url = new URL(window.location.href);
+    url.searchParams.set("ep", String(episode.episodeNumber));
+    window.history.replaceState({}, "", url);
+  }
+
+  if (!series) {
+    return (
+      <main className="watch-shell">
+        <nav className="watch-nav"><a className="nav-link" href="/?type=series">กลับไปซีรีส์</a></nav>
+        <div className="empty-state">{status}</div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="watch-shell">
+      <nav className="watch-nav">
+        <a className="nav-link" href="/?type=series">กลับไปซีรีส์</a>
+      </nav>
+      <section className="series-watch-layout">
+        <AdColumn side="left" />
+        <div className="movie-watch-main">
+          <AdSlot slot="top-wide" />
+          <AdSlot slot="hero-wide" />
+          <h1 className="watch-title-strip">{series.title}</h1>
+          <div className="series-watch-info">
+            <ImagePreview src={series.poster} fallbackSrc={series.fallbackPoster} title={series.title} />
+            <div>
+              <span className="category-kicker">{displayCategory(series.category)} · {series.episodes.length} ตอน</span>
+              <p>{series.description}</p>
+            </div>
+          </div>
+          <div className="episode-picker">
+            {series.episodes.map((episode) => (
+              <button
+                key={episode.id}
+                className={episode.id === selectedEpisode?.id ? "active" : ""}
+                onClick={() => chooseEpisode(episode)}
+                type="button"
+              >
+                EP.{episode.episodeNumber}
+              </button>
+            ))}
+          </div>
+          {selectedEpisode ? (
+            <div className="watch-player-frame">
+              <div className="player-label">{selectedEpisode.title}</div>
+              <Player source={selectedEpisode.sourceUrl} sourceType={selectedEpisode.sourceType} />
+            </div>
+          ) : (
+            <div className="empty-state">ยังไม่มีตอนที่เล่นได้</div>
+          )}
+        </div>
+        <AdColumn side="right" />
+      </section>
+    </main>
   );
 }
 
@@ -2170,6 +2415,11 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
   const [castStatus, setCastStatus] = useState("");
 
   useEffect(() => {
+    if (source && (sourceType === "embed" || source.includes("/embed"))) {
+      setStatus("โหลด embedded player แล้ว");
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) return;
     let hls: Hls | undefined;
@@ -2346,9 +2596,61 @@ async function fetchWatchVideo(id: string): Promise<{ video: VideoRecord; error?
   } catch {
     const staticData = await fetchStaticVideoPage({ page: 1, pageSize: 100, search: "", category: "All" });
     const video = staticData.videos.find((item) => String(item.id) === String(id));
+    const legacySeriesId = legacyWatchToSeries[String(id)];
+    if (!video && legacySeriesId) {
+      window.location.replace(`/series/${legacySeriesId}`);
+      throw new Error("Redirecting to series");
+    }
     if (!video) throw new Error("Video not found");
     return { video };
   }
+}
+
+async function fetchSeriesPage({ search, category }: { search: string; category: string }): Promise<SeriesPageData> {
+  try {
+    const response = await fetch("/api/series");
+    const data = (await response.json()) as { series?: SeriesRecord[]; error?: string };
+    if (!response.ok) throw new Error(data.error || "Load failed");
+    return filterSeriesPage(data.series ?? [], search, category);
+  } catch {
+    const response = await fetch("/data/series.json");
+    const data = (await response.json()) as SeriesPageData;
+    if (!response.ok) throw new Error("Load failed");
+    return filterSeriesPage(data.series ?? [], search, category);
+  }
+}
+
+async function fetchSeriesById(id: string): Promise<{ series?: SeriesRecord; error?: string }> {
+  try {
+    const response = await fetch(`/api/series/${encodeURIComponent(id)}`);
+    const data = (await response.json()) as { series?: SeriesRecord; error?: string };
+    if (!response.ok) throw new Error(data.error || "Load failed");
+    return data;
+  } catch {
+    const page = await fetchSeriesPage({ search: "", category: "All" });
+    const series = page.series.find((item) => String(item.id) === String(id));
+    if (!series) return { error: "Series not found" };
+    return { series };
+  }
+}
+
+function filterSeriesPage(items: SeriesRecord[], search: string, category: string): SeriesPageData {
+  const searchText = search.trim().toLowerCase();
+  const filtered = items.filter((item) => {
+    const matchesCategory = !category || category === "All" || item.category === category;
+    const matchesSearch = !searchText || `${item.title} ${item.description} ${item.pageUrl}`.toLowerCase().includes(searchText);
+    return matchesCategory && matchesSearch;
+  });
+  const categoryMap = new Map<string, number>();
+  for (const item of items) {
+    const name = item.category || "Series";
+    categoryMap.set(name, (categoryMap.get(name) ?? 0) + 1);
+  }
+  return {
+    series: filtered,
+    total: filtered.length,
+    categories: [...categoryMap.entries()].map(([name, count]) => ({ name, count }))
+  };
 }
 
 function recordToForm(video: VideoRecord): VideoForm {
@@ -2475,6 +2777,14 @@ function groupByCategory(videos: VideoRecord[]) {
   return videos.reduce<Record<string, VideoRecord[]>>((groups, video) => {
     const category = video.category?.trim() || "Uncategorized";
     groups[category] = [...(groups[category] ?? []), video];
+    return groups;
+  }, {});
+}
+
+function groupSeriesByCategory(series: SeriesRecord[]) {
+  return series.reduce<Record<string, SeriesRecord[]>>((groups, item) => {
+    const category = item.category?.trim() || "Series";
+    groups[category] = [...(groups[category] ?? []), item];
     return groups;
   }, {});
 }

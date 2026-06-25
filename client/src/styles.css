@@ -908,12 +908,36 @@ code {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: auto minmax(260px, 1fr) minmax(260px, auto);
+  grid-template-columns: auto auto minmax(260px, 1fr) minmax(260px, auto);
   gap: 18px;
   align-items: center;
   padding: 16px 42px;
   background: rgba(7, 8, 11, 0.96);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.main-content-menu {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #263142;
+  border-radius: 8px;
+  background: #111722;
+}
+
+.main-content-menu a {
+  min-width: 76px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #d8deea;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.main-content-menu a.active {
+  background: #e50914;
+  color: #fff;
 }
 
 .brand {
@@ -1078,6 +1102,13 @@ code {
   font-size: 14px;
 }
 
+.poster-card small {
+  display: block;
+  margin-top: 4px;
+  color: #9ca8b9;
+  font-weight: 800;
+}
+
 .login-shell {
   min-height: 100vh;
   display: grid;
@@ -1157,6 +1188,61 @@ code {
   grid-template-columns: 210px minmax(0, 1fr) 210px;
   gap: 16px;
   align-items: start;
+}
+
+.series-watch-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 210px;
+  gap: 16px;
+  align-items: start;
+}
+
+.series-watch-info {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid #263142;
+  border-radius: 8px;
+  background: #111722;
+}
+
+.series-watch-info .image-preview,
+.series-watch-info .image-fallback {
+  width: 132px;
+  aspect-ratio: 2 / 3;
+}
+
+.series-watch-info p {
+  margin-top: 8px;
+  color: #cbd5e1;
+  line-height: 1.65;
+}
+
+.episode-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #263142;
+  border-radius: 8px;
+  background: #111722;
+}
+
+.episode-picker button {
+  min-width: 72px;
+  min-height: 40px;
+  border-radius: 6px;
+  border: 1px solid #313948;
+  background: #182130;
+  color: #f8fafc;
+  font-weight: 900;
+}
+
+.episode-picker button.active {
+  border-color: #e50914;
+  background: #e50914;
 }
 
 .movie-watch-main {
@@ -1274,7 +1360,8 @@ code {
     grid-template-columns: 1fr;
   }
 
-  .movie-watch-layout {
+  .movie-watch-layout,
+  .series-watch-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -1360,6 +1447,15 @@ code {
 
   .watch-detail-panel {
     grid-template-columns: 1fr;
+  }
+
+  .series-watch-info {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .series-watch-info .image-preview,
+  .series-watch-info .image-fallback {
+    width: 96px;
   }
 
   .ad-slot.pre-player {
@@ -1471,6 +1567,15 @@ code {
 
   .poster-row {
     grid-auto-columns: minmax(138px, 42vw);
+  }
+
+  .series-watch-info {
+    grid-template-columns: 1fr;
+  }
+
+  .series-watch-info .image-preview,
+  .series-watch-info .image-fallback {
+    width: min(180px, 100%);
   }
 
   .rail-controls button {
