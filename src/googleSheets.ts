@@ -1,5 +1,8 @@
 import { google } from "googleapis";
 import type { sheets_v4 } from "googleapis";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defaultAdminUsers, type AdminUser } from "./auth.js";
 import type { CategorySummary, EpisodeRecord, SeriesRecord, VideoRecord } from "./db.js";
 
@@ -102,6 +105,17 @@ function getGoogleSheetsConfig(): ServiceAccountConfig {
     } catch {
       throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON ไม่ถูกต้อง");
     }
+  }
+
+  const keyFilePath = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), "ServiceAccountKey.json");
+  if (fs.existsSync(keyFilePath)) {
+    const parsed = JSON.parse(fs.readFileSync(keyFilePath, "utf8")) as { client_email?: string; private_key?: string };
+    if (!parsed.client_email || !parsed.private_key) throw new Error("ServiceAccountKey.json missing client_email/private_key");
+    return {
+      spreadsheetId,
+      clientEmail: parsed.client_email,
+      privateKey: normalizePrivateKey(parsed.private_key)
+    };
   }
 
   const clientEmail = String(process.env.GOOGLE_CLIENT_EMAIL ?? "").trim();

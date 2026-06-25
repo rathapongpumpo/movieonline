@@ -621,14 +621,25 @@ function buildEpisodeCandidates(
   return episodes.map((episode) => {
     const playerId = getEmbedId(episode.url);
     const source = playerId ? candidates.find((candidate) => candidate.url.includes(playerId)) : undefined;
+    const fallbackSourceType = isEmbedPlayerUrl(episode.url) ? "embed" : "hls";
     return {
       title: episode.title,
       episodeNumber: episode.episodeNumber,
       pageUrl: episode.url,
-      sourceUrl: source?.url ?? "",
-      sourceType: source?.sourceType ?? "hls"
+      sourceUrl: source?.url ?? (isEmbedPlayerUrl(episode.url) ? episode.url : ""),
+      sourceType: source?.sourceType ?? fallbackSourceType
     };
   });
+}
+
+function isEmbedPlayerUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const value = `${parsed.hostname}${parsed.pathname}`.toLowerCase();
+    return value.includes("/embed") || value.includes("player");
+  } catch {
+    return /\/embed|player/i.test(url);
+  }
 }
 
 function getEmbedId(url: string): string {

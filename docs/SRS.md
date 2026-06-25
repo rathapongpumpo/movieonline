@@ -183,6 +183,7 @@ Flow:
 | FR-A14 | Batch save ต้องบันทึกเฉพาะรายการที่เจอ direct source พร้อมใช้งาน และไม่บันทึก fallback embed หรือโฆษณา | Must |
 | FR-A15 | Category card discovery ต้อง scroll/load lazy content ก่อน extract เพื่อให้ได้ card จากทั้งหน้าเท่าที่เว็บโหลดได้ | Must |
 | FR-A16 | Batch save ต้องตรวจ source health ผ่าน playback/proxy path ก่อนบันทึก และรายการที่ fail ต้องถูกกันไว้ในสถานะผิดพลาด | Must |
+| FR-A17 | Batch movie import ต้องตรวจว่า URL นั้นเป็นซีรีส์หรือหลายตอนหรือไม่ ถ้าพบหลายตอนต้องไม่บันทึกเป็นหนังเดี่ยว และต้องแจ้งให้ไปจัดการในหน้าแอดมินซีรีส์หรือ workflow ซีรีส์ | Must |
 
 ### 4.2 Source Detection และ Filtering
 
@@ -240,9 +241,10 @@ Flow:
 | FR-GS02 | Admin ต้องกดส่งออกข้อมูลไป Google Sheets เองได้จากหน้าแอดมินหนังเดี่ยวและซีรีส์ | Must |
 | FR-GS03 | การส่งออกต้องแยกแท็บข้อมูลอย่างน้อย `Videos`, `Series`, `Episodes`, และ `Categories` เพื่อให้ตรวจสอบหรือส่งต่อทีมงานได้ง่าย | Must |
 | FR-GS04 | ถ้ายังไม่ได้ตั้งค่า Google Sheet credential ระบบต้องแจ้งเตือนชัดเจนและไม่กระทบการบันทึกลง database | Must |
-| FR-GS05 | การส่งออกต้อง overwrite snapshot ล่าสุดของแต่ละแท็บ เพื่อลดข้อมูลซ้ำและทำให้ Sheet ตรงกับ database ปัจจุบัน | Should |
-| FR-GS06 | ระบบต้องใช้ Sheet ID `1tmUDB4qbO9gmhCqo2E-djnNydwqmm6nrHGSQz93kpp0` เป็นค่าเริ่มต้นถ้าไม่มี `GOOGLE_SHEET_ID` | Must |
-| FR-GS07 | Export ต้องสร้างแท็บและ header columns ให้อัตโนมัติ รวมถึง `AdminUsers` และ `Ads` สำหรับ config เพิ่มในอนาคต | Must |
+| FR-GS05 | Local development ต้องอ่าน `ServiceAccountKey.json` ใน project root ได้โดยตรงเมื่อไม่มี env credential และ production ต้องใช้ env credential แทนการ commit key | Must |
+| FR-GS06 | การส่งออกต้อง overwrite snapshot ล่าสุดของแต่ละแท็บ เพื่อลดข้อมูลซ้ำและทำให้ Sheet ตรงกับ database ปัจจุบัน | Should |
+| FR-GS07 | ระบบต้องใช้ Sheet ID `1tmUDB4qbO9gmhCqo2E-djnNydwqmm6nrHGSQz93kpp0` เป็นค่าเริ่มต้นถ้าไม่มี `GOOGLE_SHEET_ID` | Must |
+| FR-GS08 | Export ต้องสร้างแท็บและ header columns ให้อัตโนมัติ รวมถึง `AdminUsers` และ `Ads` สำหรับ config เพิ่มในอนาคต | Must |
 
 ### 4.5.2 Admin Login
 
@@ -279,6 +281,7 @@ Flow:
 | FR-P09 | ระบบต้องรองรับการเปิดใน LINE LIFF โดยมี LIFF initialization hook และ layout ที่ไม่พังใน webview | Should |
 | FR-P10 | Playback proxy ต้องรองรับ HLS master/media playlists, nested playlist, segment, และ HLS URI attributes เช่น key/map เท่าที่จำเป็น | Must |
 | FR-P11 | Player ต้องมีปุ่มเชื่อมต่อเพื่อดูบนทีวี โดยใช้ browser Remote Playback API เมื่ออุปกรณ์และ browser รองรับ | Should |
+| FR-P12 | ปุ่มลูกศรของ poster rail ต้องแสดงเฉพาะเมื่อรายการล้นพื้นที่จริง ถ้าการ์ดแสดงครบในหน้าจอแล้วต้องไม่แสดงลูกศร | Must |
 
 ## 5. Non-Functional Requirements
 

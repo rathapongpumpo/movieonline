@@ -575,6 +575,23 @@ function AdminPage() {
         });
         const data = (await response.json()) as InspectResult & { error?: string };
         if (!response.ok) throw new Error(data.error || "ตรวจสอบไม่สำเร็จ");
+        const episodeCount = data.episodes?.length ?? 0;
+        if (episodeCount > 1) {
+          setBatchItems((items) =>
+            items.map((current) =>
+              current.url === item.url
+                ? {
+                    ...current,
+                    title: data.metadata.title || item.title,
+                    thumbnail: data.metadata.thumbnail || item.thumbnail,
+                    status: "review",
+                    message: `Detected series with ${episodeCount} episodes. Import it from Series admin, not Movie batch.`
+                  }
+                : current
+            )
+          );
+          continue;
+        }
         const source = getDefaultSource(data);
         const prepared: VideoForm | undefined = source
           ? {
@@ -1999,6 +2016,23 @@ function CatalogPage() {
 
 function PosterRail({ name, items }: { name: string; items: VideoRecord[] }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+
+    const update = () => setHasOverflow(row.scrollWidth > row.clientWidth + 2);
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(row);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [items.length]);
 
   function scrollRail(direction: "left" | "right") {
     const row = rowRef.current;
@@ -2013,10 +2047,10 @@ function PosterRail({ name, items }: { name: string; items: VideoRecord[] }) {
     <div className="rail">
       <div className="rail-head">
         <h2>{displayCategory(name)}</h2>
-        <div className="rail-controls" aria-label="เลื่อนรายการหนัง">
+        {hasOverflow && <div className="rail-controls" aria-label="เลื่อนรายการหนัง">
           <button type="button" onClick={() => scrollRail("left")} aria-label="เลื่อนไปซ้าย">‹</button>
           <button type="button" onClick={() => scrollRail("right")} aria-label="เลื่อนไปขวา">›</button>
-        </div>
+        </div>}
       </div>
       <div className="poster-row" ref={rowRef}>
         {items.map((video) => (
@@ -2355,6 +2389,7 @@ function episodeToForm(episode: EpisodeRecord): EpisodeForm {
 
 function buildEpisodeDrafts(result: InspectResult, firstSource: Candidate | undefined, fallbackUrl: string): EpisodeForm[] {
   const detected = result.episodes ?? [];
+  if (detected.length === 0) return [];
   if (detected.length === 0) {
     return [
       {
