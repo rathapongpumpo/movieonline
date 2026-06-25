@@ -38,7 +38,7 @@ import { discoverMovieCards, inspectSite, type InspectResult, type MediaItem } f
 export const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const reactRoot = path.join(root, "public", "react");
+const reactRoot = fs.existsSync(path.join(root, "dist")) ? path.join(root, "dist") : path.join(root, "public", "react");
 const reactIndex = path.join(reactRoot, "index.html");
 
 app.use(express.json({ limit: "1mb" }));
