@@ -38,6 +38,7 @@ type VideoRecord = {
   title: string;
   description: string;
   thumbnail: string;
+  fallbackThumbnail?: string;
   category: string;
   pageUrl: string;
   sourceUrl: string;
@@ -1902,7 +1903,7 @@ function CatalogPage() {
 
       {featured && (
         <section className="hero-feature">
-          <ImagePreview src={featured.thumbnail} title={featured.title} />
+          <ImagePreview src={featured.thumbnail} fallbackSrc={featured.fallbackThumbnail} title={featured.title} />
           <div className="hero-copy">
             <span className="category-kicker">{displayCategory(featured.category)}</span>
             <h1>{featured.title}</h1>
@@ -1925,7 +1926,7 @@ function CatalogPage() {
             <div className="poster-row">
               {items.map((video) => (
                 <a className="poster-card" key={video.id} href={`/watch/${video.id}`}>
-                  <ImagePreview src={video.thumbnail} title={video.title} />
+                  <ImagePreview src={video.thumbnail} fallbackSrc={video.fallbackThumbnail} title={video.title} />
                   <strong>{video.title}</strong>
                 </a>
               ))}
@@ -1982,7 +1983,7 @@ function MovieWatchLayout({ video }: { video: VideoRecord }) {
           <Player source={video.playbackUrl || video.sourceUrl} sourceType={video.sourceType} />
         </div>
         <section className="watch-detail-panel">
-          <ImagePreview src={video.thumbnail} title={video.title} />
+          <ImagePreview src={video.thumbnail} fallbackSrc={video.fallbackThumbnail} title={video.title} />
           <div>
             <span className="category-kicker">{displayCategory(video.category)}</span>
             <h2>{video.title}</h2>
@@ -2102,11 +2103,25 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
   );
 }
 
-function ImagePreview({ src, title }: { src: string; title: string }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
-  if (!src || failed) return <div className="image-fallback">ไม่มีรูป</div>;
-  return <img className="image-preview" src={src} alt={title} referrerPolicy="no-referrer" onError={() => setFailed(true)} />;
+function ImagePreview({ src, title, fallbackSrc }: { src: string; title: string; fallbackSrc?: string }) {
+  const [activeSrc, setActiveSrc] = useState(src || fallbackSrc || "");
+  useEffect(() => setActiveSrc(src || fallbackSrc || ""), [src, fallbackSrc]);
+  if (!activeSrc) return <div className="image-fallback">ไม่มีรูป</div>;
+  return (
+    <img
+      className="image-preview"
+      src={activeSrc}
+      alt={title}
+      referrerPolicy="no-referrer"
+      onError={() => {
+        if (fallbackSrc && activeSrc !== fallbackSrc) {
+          setActiveSrc(fallbackSrc);
+          return;
+        }
+        setActiveSrc("");
+      }}
+    />
+  );
 }
 
 async function fetchVideoPage({

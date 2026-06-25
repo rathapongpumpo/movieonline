@@ -322,7 +322,7 @@ Flow:
 | NFR-M07 | Vercel static deployment ต้องกำหนด output directory ให้ตรงกับ Vite output ปัจจุบันคือ `dist` และ rewrite SPA routes กลับเข้า `index.html` |
 | NFR-M08 | Vercel deployment ต้องมี serverless API catch-all สำหรับ `/api/*` เพื่อไม่ให้ SPA rewrite ส่ง HTML กลับไปแทน JSON API |
 | NFR-M09 | Frontend production ต้องมี static JSON fallback จาก SQLite snapshot เพื่อให้ catalog/watch metadata ยังแสดงได้เมื่อ serverless API ใช้งานไม่ได้ |
-| NFR-M10 | Static production catalog ต้องมี local poster fallback สำหรับทุกรายการ เพื่อไม่ให้หน้าเว็บแสดง “ไม่มีรูป” เมื่อรูปจากเว็บต้นทาง hotlink/DNS/CDN โหลดไม่ได้ |
+| NFR-M10 | Static production catalog ต้องใช้โปสเตอร์หนังจริงจาก metadata เป็นค่าแรกเสมอ และใช้ local generated poster เฉพาะเป็น fallback เมื่อรูปจริงโหลดไม่ได้เท่านั้น |
 
 ### 5.5 Usability และ UX
 
