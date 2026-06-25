@@ -319,6 +319,7 @@ Flow:
 | NFR-M04 | เอกสาร setup, run, deploy และ troubleshooting ต้องอัปเดตตามระบบ |
 | NFR-M05 | Production build ต้องมี `npm run build` สำหรับ hosting platform ที่เรียก build script มาตรฐาน เช่น Vercel |
 | NFR-M06 | ถ้าต้องส่ง SQLite snapshot ไปกับ repository ต้อง track เฉพาะ `site-source-inspector.db` หลัง checkpoint แล้ว และไม่ track runtime WAL/SHM files |
+| NFR-M07 | Vercel static deployment ต้องกำหนด output directory ให้ตรงกับ Vite output ปัจจุบันคือ `public/react` และ rewrite SPA routes กลับเข้า `index.html` |
 
 ### 5.5 Usability และ UX
 
