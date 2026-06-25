@@ -40,13 +40,14 @@ export async function exportLibraryToGoogleSheets(input: GoogleSheetsExportInput
   const exportedAt = new Date().toISOString();
   const spreadsheetId = config.spreadsheetId;
 
-  await ensureSheets(sheets, spreadsheetId, ["Videos", "Series", "Episodes", "Categories", "AdminUsers", "Ads"]);
+  await ensureSheets(sheets, spreadsheetId, ["Videos", "Series", "Episodes", "Categories", "AdminUsers", "Ads", "LineUsers"]);
   await writeSheet(sheets, spreadsheetId, "Videos", buildVideoRows(input.videos, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Series", buildSeriesRows(input.series, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Episodes", buildEpisodeRows(input.episodes, input.series, exportedAt));
   await writeSheet(sheets, spreadsheetId, "Categories", buildCategoryRows(input, exportedAt));
   await ensureSheetHeader(sheets, spreadsheetId, "AdminUsers", buildAdminUserRows(defaultAdminUsers, exportedAt)[0]);
   await ensureSheetHeader(sheets, spreadsheetId, "Ads", buildAdRows(exportedAt)[0]);
+  await ensureSheetHeader(sheets, spreadsheetId, "LineUsers", buildLineUserRows(exportedAt)[0]);
 
   return {
     spreadsheetId,
@@ -276,6 +277,10 @@ function buildAdRows(exportedAt: string): string[][] {
     ["sidebar-left", "", "", "", "FALSE", "30", exportedAt],
     ["sidebar-right", "", "", "", "FALSE", "40", exportedAt]
   ];
+}
+
+function buildLineUserRows(exportedAt: string): string[][] {
+  return [["logged_at", "line_user_id", "display_name", "picture_url", "status_message", "source", "exported_at"], ["", "", "", "", "", "", exportedAt]];
 }
 
 function buildCategorySummaries(input: GoogleSheetsExportInput) {

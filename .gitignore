@@ -9,3 +9,4 @@ tmp/
 !site-source-inspector.db
 *.db-shm
 *.db-wal
+ServiceAccountKey.json

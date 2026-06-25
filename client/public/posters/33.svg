@@ -20,7 +20,7 @@
   <circle cx="286" cy="82" r="78" fill="#16a34a" opacity="0.2"/>
   <circle cx="70" cy="470" r="92" fill="#16a34a" opacity="0.16"/>
   <text x="32" y="62" class="brand">MOVIE ONLINE</text>
-  <text x="32" y="102" class="meta">ยังไม่จัดหมวด</text>
+  <text x="32" y="102" class="meta">Romance</text>
   <text x="32" y="150" class="title">Endless Love (2026)</text><text x="32" y="192" class="title">หากเพียงได้พบกัน</text><text x="32" y="234" class="title">EP.1-24</text>
   <rect x="32" y="458" width="120" height="4" rx="2" fill="url(#accent)"/>
   <text x="32" y="502" class="meta">WATCH NOW</text>

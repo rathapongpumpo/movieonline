@@ -133,6 +133,21 @@ type Notice = {
   text: string;
 };
 
+type LiffProfile = {
+  userId: string;
+  displayName: string;
+  pictureUrl?: string;
+};
+
+type LiffClient = {
+  init: (options: { liffId: string }) => Promise<void>;
+  isLoggedIn: () => boolean;
+  isInClient: () => boolean;
+  login: (options?: { redirectUri?: string }) => void;
+  getAccessToken: () => string | null;
+  getProfile: () => Promise<LiffProfile>;
+};
+
 type GoogleSheetsExportResult = {
   spreadsheetUrl: string;
   videos: number;
@@ -195,15 +210,70 @@ const movieTypes = [
 ];
 
 function App() {
-  useEffect(() => {
-    initializeLiffIfConfigured();
-  }, []);
-
   const path = window.location.pathname;
   if (path.startsWith("/admin/series")) return <AdminGate><SeriesAdminPage /></AdminGate>;
   if (path.startsWith("/admin")) return <AdminGate><AdminPage /></AdminGate>;
-  if (path.startsWith("/watch/")) return <WatchPage />;
-  return <CatalogPage />;
+  if (path.startsWith("/watch/")) return <LiffViewerGate><WatchPage /></LiffViewerGate>;
+  return <LiffViewerGate><CatalogPage /></LiffViewerGate>;
+}
+
+function LiffViewerGate({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState("กำลังตรวจสอบ LINE...");
+  const [ready, setReady] = useState(isLocalDevHost());
+
+  useEffect(() => {
+    if (isLocalDevHost()) return;
+    const win = window as unknown as { liff?: LiffClient };
+    const liffId = getLiffId();
+    const liffUrl = `https://liff.line.me/${liffId}`;
+
+    if (!win.liff) {
+      window.location.replace(liffUrl);
+      return;
+    }
+
+    win.liff
+      .init({ liffId })
+      .then(async () => {
+        if (!win.liff) return;
+        if (!win.liff.isLoggedIn()) {
+          win.liff.login({ redirectUri: window.location.href });
+          return;
+        }
+        if (!win.liff.isInClient()) {
+          window.location.replace(liffUrl);
+          return;
+        }
+
+        const accessToken = win.liff.getAccessToken();
+        if (accessToken) {
+          await fetch("/api/line-login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken })
+          }).catch(() => undefined);
+        }
+        setReady(true);
+      })
+      .catch(() => {
+        setStatus("กรุณาเปิดผ่าน LINE OA");
+        window.location.replace(liffUrl);
+      });
+  }, []);
+
+  if (!ready) {
+    return (
+      <main className="line-gate-shell">
+        <div className="line-gate-panel">
+          <strong>เปิดผ่าน LINE เท่านั้น</strong>
+          <span>{status}</span>
+          <a href={`https://liff.line.me/${getLiffId()}`}>เปิดผ่าน LINE</a>
+        </div>
+      </main>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function AdminGate({ children }: { children: React.ReactNode }) {
@@ -1921,20 +1991,43 @@ function CatalogPage() {
       <section className="content-rails">
         {status && <div className="empty-state">{status}</div>}
         {Object.entries(grouped).map(([name, items]) => (
-          <div className="rail" key={name}>
-            <h2>{displayCategory(name)}</h2>
-            <div className="poster-row">
-              {items.map((video) => (
-                <a className="poster-card" key={video.id} href={`/watch/${video.id}`}>
-                  <ImagePreview src={video.thumbnail} fallbackSrc={video.fallbackThumbnail} title={video.title} />
-                  <strong>{video.title}</strong>
-                </a>
-              ))}
-            </div>
-          </div>
+          <PosterRail key={name} name={name} items={items} />
         ))}
       </section>
     </main>
+  );
+}
+
+function PosterRail({ name, items }: { name: string; items: VideoRecord[] }) {
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  function scrollRail(direction: "left" | "right") {
+    const row = rowRef.current;
+    if (!row) return;
+    row.scrollBy({
+      left: direction === "left" ? -row.clientWidth * 0.82 : row.clientWidth * 0.82,
+      behavior: "smooth"
+    });
+  }
+
+  return (
+    <div className="rail">
+      <div className="rail-head">
+        <h2>{displayCategory(name)}</h2>
+        <div className="rail-controls" aria-label="เลื่อนรายการหนัง">
+          <button type="button" onClick={() => scrollRail("left")} aria-label="เลื่อนไปซ้าย">‹</button>
+          <button type="button" onClick={() => scrollRail("right")} aria-label="เลื่อนไปขวา">›</button>
+        </div>
+      </div>
+      <div className="poster-row" ref={rowRef}>
+        {items.map((video) => (
+          <a className="poster-card" key={video.id} href={`/watch/${video.id}`}>
+            <ImagePreview src={video.thumbnail} fallbackSrc={video.fallbackThumbnail} title={video.title} />
+            <strong>{video.title}</strong>
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -2007,17 +2100,41 @@ function AdColumn({ side }: { side: "left" | "right" }) {
 }
 
 function AdSlot({ slot }: { slot: string }) {
+  const size = getAdSlotSize(slot);
   return (
     <div className={`ad-slot ${slot}`}>
       <span>พื้นที่โฆษณา</span>
       <strong>{slot}</strong>
+      <small>{size}</small>
     </div>
   );
+}
+
+function getAdSlotSize(slot: string): string {
+  if (slot.includes("tower")) return "แนะนำ 300 x 600 px";
+  if (slot === "pre-player") return "แนะนำ 970 x 250 px";
+  if (slot === "top-wide" || slot === "hero-wide") return "แนะนำ 970 x 90 px";
+  return "แนะนำ 728 x 90 px";
+}
+
+async function promptRemotePlayback(video: HTMLVideoElement | null, setCastStatus: (value: string) => void) {
+  const remote = (video as unknown as { remote?: { prompt?: () => Promise<void> } } | null)?.remote;
+  if (!remote?.prompt) {
+    setCastStatus("อุปกรณ์หรือ browser นี้ยังไม่รองรับการเชื่อมต่อทีวี");
+    return;
+  }
+  try {
+    await remote.prompt();
+    setCastStatus("กำลังเชื่อมต่อทีวี...");
+  } catch {
+    setCastStatus("ยังไม่ได้เชื่อมต่อทีวี");
+  }
 }
 
 function Player({ source, sourceType }: { source: string; sourceType: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [status, setStatus] = useState(source ? "กำลังโหลดเครื่องเล่น..." : "ยังไม่ได้เลือกแหล่งวิดีโอ");
+  const [castStatus, setCastStatus] = useState("");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -2098,6 +2215,10 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
         disablePictureInPicture
         onContextMenu={(event) => event.preventDefault()}
       />
+      <button className="cast-button" type="button" onClick={() => promptRemotePlayback(videoRef.current, setCastStatus)}>
+        เชื่อมต่อทีวี
+      </button>
+      {castStatus && <div className="player-status">{castStatus}</div>}
       <div className="player-status">{status}</div>
     </div>
   );
@@ -2346,7 +2467,10 @@ function displayCategory(value: string) {
     Horror: "สยองขวัญ",
     Romance: "โรแมนติก",
     "Sci-Fi": "ไซไฟ",
-    Thriller: "ระทึกขวัญ"
+    Thriller: "ระทึกขวัญ",
+    Documentary: "สารคดี",
+    Series: "ซีรีส์",
+    War: "สงคราม"
   };
   if (legacy[value]) return legacy[value];
   return value;
@@ -2392,6 +2516,14 @@ function initializeLiffIfConfigured() {
   const liffId = win.SSI_LIFF_ID || document.querySelector<HTMLMetaElement>("meta[name='liff-id']")?.content || "";
   if (!liffId || win.liff === undefined) return;
   win.liff.init({ liffId }).catch(() => undefined);
+}
+
+function getLiffId() {
+  return document.querySelector<HTMLMetaElement>("meta[name='liff-id']")?.content || "2010511616-ZBXEZgi4";
+}
+
+function isLocalDevHost() {
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
 }
 
 function useState<T>(initial: T | (() => T)): [T, React.Dispatch<React.SetStateAction<T>>];

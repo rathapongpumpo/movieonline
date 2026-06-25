@@ -20,7 +20,7 @@
   <circle cx="286" cy="82" r="78" fill="#dc2626" opacity="0.2"/>
   <circle cx="70" cy="470" r="92" fill="#dc2626" opacity="0.16"/>
   <text x="32" y="62" class="brand">MOVIE ONLINE</text>
-  <text x="32" y="102" class="meta">Uncategorized</text>
+  <text x="32" y="102" class="meta">Documentary</text>
   <text x="32" y="150" class="title">USA 94 Brazils</text><text x="32" y="192" class="title">Return To Glory</text><text x="32" y="234" class="title">(2026) USA 94</text><text x="32" y="276" class="title">บราซิลคืนบัลลังก์</text>
   <rect x="32" y="458" width="120" height="4" rx="2" fill="url(#accent)"/>
   <text x="32" y="502" class="meta">WATCH NOW</text>

@@ -278,6 +278,7 @@ Flow:
 | FR-P08 | Watch page ต้องลดโอกาสการคัดลอก source URL ด้วยการไม่ render URL ใน DOM, ปิด context menu บน player, และซ่อน endpoint ผ่าน player component เท่าที่เว็บทำได้ | Should |
 | FR-P09 | ระบบต้องรองรับการเปิดใน LINE LIFF โดยมี LIFF initialization hook และ layout ที่ไม่พังใน webview | Should |
 | FR-P10 | Playback proxy ต้องรองรับ HLS master/media playlists, nested playlist, segment, และ HLS URI attributes เช่น key/map เท่าที่จำเป็น | Must |
+| FR-P11 | Player ต้องมีปุ่มเชื่อมต่อเพื่อดูบนทีวี โดยใช้ browser Remote Playback API เมื่ออุปกรณ์และ browser รองรับ | Should |
 
 ## 5. Non-Functional Requirements
 
@@ -324,6 +325,9 @@ Flow:
 | NFR-M09 | Frontend production ต้องมี static JSON fallback จาก SQLite snapshot เพื่อให้ catalog/watch metadata ยังแสดงได้เมื่อ serverless API ใช้งานไม่ได้ |
 | NFR-M10 | Static production catalog ต้องใช้โปสเตอร์หนังจริงจาก metadata เป็นค่าแรกเสมอ และใช้ local generated poster เฉพาะเป็น fallback เมื่อรูปจริงโหลดไม่ได้เท่านั้น |
 | NFR-M11 | Build pipeline ต้องพยายาม cache ไฟล์โปสเตอร์หนังจริงจาก remote thumbnail มาไว้ใต้ static assets ของเว็บเอง เพื่อลดปัญหา hotlink/DNS/CDN ที่ทำให้ production โหลดรูปไม่ขึ้น |
+| NFR-M12 | หน้าบ้านต้องถูกบังคับเปิดผ่าน LIFF URL และต้อง login LINE ก่อนใช้งาน โดยบันทึก LINE user ID/profile ผ่าน backend endpoint ที่ verify token กับ LINE Platform |
+| NFR-M13 | พื้นที่โฆษณาทุก slot ต้องแสดงขนาดแนะนำให้ผู้ลงโฆษณาเห็นชัดเจน |
+| NFR-M14 | Mobile poster rails ต้องมีปุ่มลูกศรเลื่อนซ้าย/ขวาเมื่อรายการเกินความกว้างหน้าจอ |
 
 ### 5.5 Usability และ UX
 

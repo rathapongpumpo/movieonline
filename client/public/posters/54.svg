@@ -20,7 +20,7 @@
   <circle cx="286" cy="82" r="78" fill="#ea580c" opacity="0.2"/>
   <circle cx="70" cy="470" r="92" fill="#ea580c" opacity="0.16"/>
   <text x="32" y="62" class="brand">MOVIE ONLINE</text>
-  <text x="32" y="102" class="meta">ยังไม่จัดหมวด</text>
+  <text x="32" y="102" class="meta">Sci-Fi</text>
   <text x="32" y="150" class="title">Black Mirror</text><text x="32" y="192" class="title">Bandersnatch (2018)</text><text x="32" y="234" class="title">แบล็ก มิร์เรอร์</text><text x="32" y="276" class="title">แบนเดอร์สแนทช์</text>
   <rect x="32" y="458" width="120" height="4" rx="2" fill="url(#accent)"/>
   <text x="32" y="502" class="meta">WATCH NOW</text>
