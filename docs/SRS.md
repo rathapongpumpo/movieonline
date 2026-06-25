@@ -321,6 +321,7 @@ Flow:
 | NFR-M06 | ถ้าต้องส่ง SQLite snapshot ไปกับ repository ต้อง track เฉพาะ `site-source-inspector.db` หลัง checkpoint แล้ว และไม่ track runtime WAL/SHM files |
 | NFR-M07 | Vercel static deployment ต้องกำหนด output directory ให้ตรงกับ Vite output ปัจจุบันคือ `dist` และ rewrite SPA routes กลับเข้า `index.html` |
 | NFR-M08 | Vercel deployment ต้องมี serverless API catch-all สำหรับ `/api/*` เพื่อไม่ให้ SPA rewrite ส่ง HTML กลับไปแทน JSON API |
+| NFR-M09 | Frontend production ต้องมี static JSON fallback จาก SQLite snapshot เพื่อให้ catalog/watch metadata ยังแสดงได้เมื่อ serverless API ใช้งานไม่ได้ |
 
 ### 5.5 Usability และ UX
 

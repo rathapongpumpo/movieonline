@@ -1943,8 +1943,7 @@ function WatchPage() {
   const [status, setStatus] = useState("กำลังโหลด...");
 
   useEffect(() => {
-    fetch(`/api/watch/${encodeURIComponent(id || "")}`)
-      .then((response) => response.json())
+    fetchWatchVideo(id || "")
       .then((data) => {
         if (data.error) throw new Error(data.error);
         setVideo(data.video);
@@ -2128,9 +2127,59 @@ async function fetchVideoPage({
     category
   });
   const response = await fetch(`/api/videos?${params.toString()}`);
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Load failed");
-  return data;
+  try {
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Load failed");
+    return data;
+  } catch (error) {
+    return fetchStaticVideoPage({ page, pageSize, search, category });
+  }
+}
+
+async function fetchStaticVideoPage({
+  page,
+  pageSize,
+  search,
+  category
+}: {
+  page: number;
+  pageSize: number;
+  search: string;
+  category: string;
+}): Promise<VideoPage> {
+  const response = await fetch("/data/videos.json");
+  const data = (await response.json()) as Pick<VideoPage, "videos" | "total" | "categories">;
+  if (!response.ok) throw new Error("Load failed");
+  const searchText = search.trim().toLowerCase();
+  const filtered = data.videos.filter((video) => {
+    const matchesCategory = !category || category === "All" || video.category === category;
+    const matchesSearch =
+      !searchText ||
+      `${video.title} ${video.description} ${video.pageUrl}`.toLowerCase().includes(searchText);
+    return matchesCategory && matchesSearch;
+  });
+  const offset = (page - 1) * pageSize;
+  return {
+    videos: filtered.slice(offset, offset + pageSize),
+    total: filtered.length,
+    page,
+    pageSize,
+    categories: data.categories
+  };
+}
+
+async function fetchWatchVideo(id: string): Promise<{ video: VideoRecord; error?: string }> {
+  try {
+    const response = await fetch(`/api/watch/${encodeURIComponent(id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Load failed");
+    return data;
+  } catch {
+    const staticData = await fetchStaticVideoPage({ page: 1, pageSize: 100, search: "", category: "All" });
+    const video = staticData.videos.find((item) => String(item.id) === String(id));
+    if (!video) throw new Error("Video not found");
+    return { video };
+  }
 }
 
 function recordToForm(video: VideoRecord): VideoForm {
