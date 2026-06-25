@@ -182,6 +182,7 @@ Flow:
 | FR-A13 | Batch inspect ต้องแสดง progress ตามจำนวนรายการที่ตรวจสอบแล้ว และแยกสถานะพร้อมบันทึก/ต้องตรวจเอง/ผิดพลาด | Must |
 | FR-A14 | Batch save ต้องบันทึกเฉพาะรายการที่เจอ direct source พร้อมใช้งาน และไม่บันทึก fallback embed หรือโฆษณา | Must |
 | FR-A15 | Category card discovery ต้อง scroll/load lazy content ก่อน extract เพื่อให้ได้ card จากทั้งหน้าเท่าที่เว็บโหลดได้ | Must |
+| FR-A16 | Batch save ต้องตรวจ source health ผ่าน playback/proxy path ก่อนบันทึก และรายการที่ fail ต้องถูกกันไว้ในสถานะผิดพลาด | Must |
 
 ### 4.2 Source Detection และ Filtering
 
@@ -276,6 +277,7 @@ Flow:
 | FR-P07 | Watch page ต้องจัด layout แบบเว็บหนัง มีตำแหน่งโฆษณาด้านบน/ข้าง/ก่อน player และยัง responsive บนมือถือ | Must |
 | FR-P08 | Watch page ต้องลดโอกาสการคัดลอก source URL ด้วยการไม่ render URL ใน DOM, ปิด context menu บน player, และซ่อน endpoint ผ่าน player component เท่าที่เว็บทำได้ | Should |
 | FR-P09 | ระบบต้องรองรับการเปิดใน LINE LIFF โดยมี LIFF initialization hook และ layout ที่ไม่พังใน webview | Should |
+| FR-P10 | Playback proxy ต้องรองรับ HLS master/media playlists, nested playlist, segment, และ HLS URI attributes เช่น key/map เท่าที่จำเป็น | Must |
 
 ## 5. Non-Functional Requirements
 

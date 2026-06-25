@@ -140,6 +140,12 @@ type GoogleSheetsExportResult = {
   categories: number;
 };
 
+type SourceHealthResult = {
+  ok: boolean;
+  reason?: string;
+  normalizedContentType?: string;
+};
+
 const emptyForm: VideoForm = {
   title: "",
   description: "",
@@ -375,6 +381,9 @@ function AdminPage() {
   async function saveVideo() {
     setNotice({ tone: "loading", text: editingId ? "กำลังอัปเดต..." : "กำลังบันทึก..." });
     try {
+      if (form.sourceType !== "embed") {
+        await checkSourceHealth(form.sourceUrl);
+      }
       const response = await fetch(editingId ? `/api/videos/${editingId}` : "/api/videos", {
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -497,7 +506,6 @@ function AdminPage() {
         const data = (await response.json()) as InspectResult & { error?: string };
         if (!response.ok) throw new Error(data.error || "ตรวจสอบไม่สำเร็จ");
         const source = getDefaultSource(data);
-        const isReady = Boolean(source && data.candidates.length === 1);
         const prepared: VideoForm | undefined = source
           ? {
               title: data.metadata.title || item.title,
@@ -509,6 +517,19 @@ function AdminPage() {
               sourceType: source.sourceType
             }
           : undefined;
+        let status: BatchCard["status"] = "review";
+        let message = formatResultStatus(data);
+        let readyForm: VideoForm | undefined;
+        if (source && data.candidates.length === 1 && prepared) {
+          if (source.sourceType === "embed") {
+            message = "พบเฉพาะ embed ไม่ใช่ direct video source";
+          } else {
+            const health = await checkSourceHealth(source.url);
+            status = health.ok ? "ready" : "error";
+            message = health.ok ? "พร้อมบันทึก: source เล่นได้" : `source เล่นไม่ได้: ${health.reason || "ตรวจสอบไม่ผ่าน"}`;
+            readyForm = health.ok ? prepared : undefined;
+          }
+        }
         setBatchItems((items) =>
           items.map((current) =>
             current.url === item.url
@@ -516,9 +537,9 @@ function AdminPage() {
                   ...current,
                   title: prepared?.title || item.title,
                   thumbnail: prepared?.thumbnail || item.thumbnail,
-                  status: isReady ? "ready" : "review",
-                  message: isReady ? "พร้อมบันทึก" : formatResultStatus(data),
-                  form: isReady ? prepared : undefined
+                  status,
+                  message,
+                  form: readyForm
                 }
               : current
           )
@@ -2024,7 +2045,7 @@ function Player({ source, sourceType }: { source: string; sourceType: string }) 
     video.addEventListener("playing", onPlaying);
     video.addEventListener("error", onError);
 
-    if (source.includes(".m3u8") && Hls.isSupported()) {
+    if ((sourceType === "hls" || source.includes(".m3u8")) && Hls.isSupported()) {
       hls = new Hls({ debug: false });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) setStatus(`HLS error: ${data.type} / ${data.details}`);
@@ -2190,6 +2211,19 @@ function nextEpisodeForm(series: SeriesRecord): EpisodeForm {
 
 function getDefaultSource(result: InspectResult): Candidate | undefined {
   return result.candidates[0];
+}
+
+async function checkSourceHealth(sourceUrl: string): Promise<SourceHealthResult> {
+  const response = await fetch("/api/admin/source-health", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sourceUrl })
+  });
+  const data = (await response.json().catch(() => ({}))) as SourceHealthResult & { error?: string };
+  if (!response.ok || !data.ok) {
+    throw new Error(data.reason || data.error || "source เล่นไม่ได้");
+  }
+  return data;
 }
 
 function formatResultStatus(result: InspectResult): string {

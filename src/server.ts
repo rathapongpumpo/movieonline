@@ -153,6 +153,20 @@ app.post("/api/admin/export/google-sheets", async (_req, res) => {
   }
 });
 
+app.post("/api/admin/source-health", async (req, res) => {
+  try {
+    const sourceUrl = String(req.body?.sourceUrl ?? "");
+    if (!sourceUrl) throw new Error("Source URL is required");
+    const health = await checkPlayableSource(sourceUrl);
+    res.status(health.ok ? 200 : 400).json(health);
+  } catch (error) {
+    res.status(400).json({
+      ok: false,
+      reason: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 app.get("/api/videos", (req, res) => {
   const page = Number(req.query.page ?? 1);
   const pageSize = Number(req.query.pageSize ?? 24);
@@ -362,12 +376,14 @@ async function proxyMedia(targetUrl: string, range: string | undefined, res: exp
       return;
     }
 
-    const passHeaders = ["content-type", "content-length", "content-range", "accept-ranges"];
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const proxiedType = normalizeMediaContentType(contentType, finalUrl, bytes);
+    const passHeaders = ["content-length", "content-range", "accept-ranges"];
     for (const header of passHeaders) {
       const value = response.headers.get(header);
       if (value) res.setHeader(header, value);
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
+    if (proxiedType) res.setHeader("Content-Type", proxiedType);
     res.send(bytes);
   } catch (error) {
     res.status(502).send(error instanceof Error ? error.message : String(error));
@@ -379,11 +395,80 @@ function rewriteHlsPlaylist(text: string, playlistUrl: string): string {
     .split(/\r?\n/)
     .map((line) => {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) return line;
+      if (!trimmed) return line;
+      if (trimmed.startsWith("#")) return rewriteHlsTagUris(line, playlistUrl);
       const absolute = new URL(trimmed, playlistUrl).href;
       return `/api/play-proxy?u=${encodeURIComponent(absolute)}`;
     })
     .join("\n");
+}
+
+function rewriteHlsTagUris(line: string, playlistUrl: string): string {
+  return line.replace(/URI="([^"]+)"/g, (_match, uri: string) => {
+    if (!uri || uri.startsWith("data:")) return `URI="${uri}"`;
+    const absolute = new URL(uri, playlistUrl).href;
+    return `URI="/api/play-proxy?u=${encodeURIComponent(absolute)}"`;
+  });
+}
+
+function normalizeMediaContentType(contentType: string, url: string, bytes: Buffer): string {
+  const lowerUrl = url.toLowerCase();
+  if (bytes[0] === 0x47) return "video/mp2t";
+  if (bytes.slice(4, 8).toString("latin1") === "ftyp") return "video/mp4";
+  if (contentType && !(contentType.includes("image/") && /\.(jpeg|jpg|png|webp)(?:\?|$)/i.test(lowerUrl))) return contentType;
+  if (/\.(ts|m2ts)(?:\?|$)/i.test(lowerUrl)) return "video/mp2t";
+  if (/\.(m4s|mp4)(?:\?|$)/i.test(lowerUrl)) return "video/mp4";
+  return contentType || "application/octet-stream";
+}
+
+async function checkPlayableSource(sourceUrl: string) {
+  if (!sourceUrl.startsWith("http://") && !sourceUrl.startsWith("https://")) {
+    return { ok: false, reason: "Source URL is not http(s)" };
+  }
+
+  if (sourceUrl.toLowerCase().includes(".m3u8")) {
+    const playlist = await fetchTextForHealth(sourceUrl);
+    const firstEntry = findFirstPlaylistEntry(playlist.text, sourceUrl);
+    if (!firstEntry) return { ok: false, reason: "HLS playlist has no media entries" };
+    const mediaUrl = firstEntry.toLowerCase().includes(".m3u8") ? findFirstPlaylistEntry((await fetchTextForHealth(firstEntry)).text, firstEntry) : firstEntry;
+    if (!mediaUrl) return { ok: false, reason: "Nested HLS playlist has no segment entries" };
+    return probeMediaBytes(mediaUrl);
+  }
+
+  return probeMediaBytes(sourceUrl);
+}
+
+async function fetchTextForHealth(url: string) {
+  const response = await fetch(url, { redirect: "follow" });
+  if (!response.ok) throw new Error(`Fetch failed ${response.status}`);
+  return { text: await response.text(), url: response.url || url };
+}
+
+function findFirstPlaylistEntry(text: string, playlistUrl: string): string | undefined {
+  const line = text
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .find((item) => item && !item.startsWith("#"));
+  return line ? new URL(line, playlistUrl).href : undefined;
+}
+
+async function probeMediaBytes(url: string) {
+  const response = await fetch(url, {
+    headers: { range: "bytes=0-63" },
+    redirect: "follow"
+  });
+  if (!response.ok && response.status !== 206) return { ok: false, reason: `Segment fetch failed ${response.status}`, url };
+  const contentType = response.headers.get("content-type") ?? "";
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const normalized = normalizeMediaContentType(contentType, response.url || url, bytes);
+  const ok = normalized.startsWith("video/") || normalized.includes("octet-stream");
+  return {
+    ok,
+    reason: ok ? "Playable media bytes detected" : `Unsupported media bytes: ${contentType || "unknown"}`,
+    url,
+    contentType,
+    normalizedContentType: normalized
+  };
 }
 
 function isDirectVideoSource(item: MediaItem): boolean {
