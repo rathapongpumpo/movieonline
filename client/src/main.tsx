@@ -236,12 +236,12 @@ function LiffViewerGate({ children }: { children: React.ReactNode }) {
       .init({ liffId })
       .then(async () => {
         if (!win.liff) return;
-        if (!win.liff.isInClient()) {
-          setStatus("หน้านี้เข้าได้เฉพาะในแอป LINE เท่านั้น");
-          return;
-        }
         if (!win.liff.isLoggedIn()) {
-          win.liff.login({ redirectUri: window.location.href });
+          if (win.liff.isInClient()) {
+            win.liff.login({ redirectUri: window.location.href });
+          } else {
+            setStatus("กรุณากดเปิดผ่าน LINE เพื่อเข้าสู่ระบบ");
+          }
           return;
         }
 
