@@ -218,7 +218,7 @@ function App() {
 }
 
 function LiffViewerGate({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState("กำลังตรวจสอบ LINE...");
+  const [status, setStatus] = useState("กรุณาเปิดเว็บผ่าน LINE OA เพื่อใช้งาน");
   const [ready, setReady] = useState(isLocalDevHost());
 
   useEffect(() => {
@@ -228,7 +228,7 @@ function LiffViewerGate({ children }: { children: React.ReactNode }) {
     const liffUrl = `https://liff.line.me/${liffId}`;
 
     if (!win.liff) {
-      window.location.replace(liffUrl);
+      setStatus("ไม่พบ LIFF SDK กรุณาเปิดผ่าน LINE");
       return;
     }
 
@@ -236,12 +236,12 @@ function LiffViewerGate({ children }: { children: React.ReactNode }) {
       .init({ liffId })
       .then(async () => {
         if (!win.liff) return;
-        if (!win.liff.isLoggedIn()) {
-          win.liff.login({ redirectUri: window.location.href });
+        if (!win.liff.isInClient()) {
+          setStatus("หน้านี้เข้าได้เฉพาะในแอป LINE เท่านั้น");
           return;
         }
-        if (!win.liff.isInClient()) {
-          window.location.replace(liffUrl);
+        if (!win.liff.isLoggedIn()) {
+          win.liff.login({ redirectUri: window.location.href });
           return;
         }
 
@@ -256,8 +256,7 @@ function LiffViewerGate({ children }: { children: React.ReactNode }) {
         setReady(true);
       })
       .catch(() => {
-        setStatus("กรุณาเปิดผ่าน LINE OA");
-        window.location.replace(liffUrl);
+        setStatus("ตรวจสอบ LIFF ไม่สำเร็จ กรุณาเปิดผ่าน LINE อีกครั้ง");
       });
   }, []);
 

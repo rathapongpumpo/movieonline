@@ -326,6 +326,7 @@ Flow:
 | NFR-M10 | Static production catalog ต้องใช้โปสเตอร์หนังจริงจาก metadata เป็นค่าแรกเสมอ และใช้ local generated poster เฉพาะเป็น fallback เมื่อรูปจริงโหลดไม่ได้เท่านั้น |
 | NFR-M11 | Build pipeline ต้องพยายาม cache ไฟล์โปสเตอร์หนังจริงจาก remote thumbnail มาไว้ใต้ static assets ของเว็บเอง เพื่อลดปัญหา hotlink/DNS/CDN ที่ทำให้ production โหลดรูปไม่ขึ้น |
 | NFR-M12 | หน้าบ้านต้องถูกบังคับเปิดผ่าน LIFF URL และต้อง login LINE ก่อนใช้งาน โดยบันทึก LINE user ID/profile ผ่าน backend endpoint ที่ verify token กับ LINE Platform |
+| NFR-M12a | Direct browser access to the public site must not call normal LINE web login automatically. It must show a clear blocked state with an "open in LINE" action, while real playback/catalog access is allowed only inside the LINE LIFF client. |
 | NFR-M13 | พื้นที่โฆษณาทุก slot ต้องแสดงขนาดแนะนำให้ผู้ลงโฆษณาเห็นชัดเจน |
 | NFR-M14 | Mobile poster rails ต้องมีปุ่มลูกศรเลื่อนซ้าย/ขวาเมื่อรายการเกินความกว้างหน้าจอ |
 
