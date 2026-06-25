@@ -140,21 +140,6 @@ type Notice = {
   text: string;
 };
 
-type LiffProfile = {
-  userId: string;
-  displayName: string;
-  pictureUrl?: string;
-};
-
-type LiffClient = {
-  init: (options: { liffId: string }) => Promise<void>;
-  isLoggedIn: () => boolean;
-  isInClient: () => boolean;
-  login: (options?: { redirectUri?: string }) => void;
-  getAccessToken: () => string | null;
-  getProfile: () => Promise<LiffProfile>;
-};
-
 type GoogleSheetsExportResult = {
   spreadsheetUrl: string;
   videos: number;
@@ -250,68 +235,10 @@ function App() {
   const path = window.location.pathname;
   if (path.startsWith("/admin/series")) return <AdminGate><SeriesAdminPage /></AdminGate>;
   if (path.startsWith("/admin")) return <AdminGate><AdminPage /></AdminGate>;
-  if (path.startsWith("/series/")) return <LiffViewerGate><SeriesWatchPage /></LiffViewerGate>;
-  if (path.startsWith("/watch/")) return <LiffViewerGate><WatchPage /></LiffViewerGate>;
-  if (new URLSearchParams(window.location.search).get("type") === "series") return <LiffViewerGate><SeriesCatalogPage /></LiffViewerGate>;
-  return <LiffViewerGate><CatalogPage /></LiffViewerGate>;
-}
-
-function LiffViewerGate({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState("กรุณาเปิดเว็บผ่าน LINE OA เพื่อใช้งาน");
-  const [ready, setReady] = useState(isLocalDevHost());
-
-  useEffect(() => {
-    if (isLocalDevHost()) return;
-    const win = window as unknown as { liff?: LiffClient };
-    const liffId = getLiffId();
-    const liffUrl = `https://liff.line.me/${liffId}`;
-
-    if (!win.liff) {
-      setStatus("ไม่พบ LIFF SDK กรุณาเปิดผ่าน LINE");
-      return;
-    }
-
-    win.liff
-      .init({ liffId })
-      .then(async () => {
-        if (!win.liff) return;
-        if (!win.liff.isLoggedIn()) {
-          if (win.liff.isInClient()) {
-            win.liff.login({ redirectUri: window.location.href });
-          } else {
-            setStatus("กรุณากดเปิดผ่าน LINE เพื่อเข้าสู่ระบบ");
-          }
-          return;
-        }
-
-        const accessToken = win.liff.getAccessToken();
-        if (accessToken) {
-          await fetch("/api/line-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accessToken })
-          }).catch(() => undefined);
-        }
-        setReady(true);
-      })
-      .catch(() => {
-        setStatus("ตรวจสอบ LIFF ไม่สำเร็จ กรุณาเปิดผ่าน LINE อีกครั้ง");
-      });
-  }, []);
-
-  if (!ready) {
-    return (
-      <main className="line-gate-shell">
-        <div className="line-gate-panel">
-          <strong>เปิดผ่าน LINE เท่านั้น</strong>
-          <span>{status}</span>
-          <a href={`https://liff.line.me/${getLiffId()}`}>เปิดผ่าน LINE</a>
-        </div>
-      </main>
-    );
-  }
-
-  return <>{children}</>;
+  if (path.startsWith("/series/")) return <SeriesWatchPage />;
+  if (path.startsWith("/watch/")) return <WatchPage />;
+  if (new URLSearchParams(window.location.search).get("type") === "series") return <SeriesCatalogPage />;
+  return <CatalogPage />;
 }
 
 function AdminGate({ children }: { children: React.ReactNode }) {
@@ -2850,24 +2777,6 @@ function translateError(value: string) {
   if (value.includes("Blocked sidecar")) return "Source นี้เป็น playlist ย่อย ระบบไม่อนุญาตให้บันทึก";
   if (value.includes("Video not found")) return "ไม่พบวิดีโอ";
   return value;
-}
-
-function initializeLiffIfConfigured() {
-  const win = window as unknown as {
-    liff?: { init: (options: { liffId: string }) => Promise<void> };
-    SSI_LIFF_ID?: string;
-  };
-  const liffId = win.SSI_LIFF_ID || document.querySelector<HTMLMetaElement>("meta[name='liff-id']")?.content || "";
-  if (!liffId || win.liff === undefined) return;
-  win.liff.init({ liffId }).catch(() => undefined);
-}
-
-function getLiffId() {
-  return document.querySelector<HTMLMetaElement>("meta[name='liff-id']")?.content || "2010511616-ZBXEZgi4";
-}
-
-function isLocalDevHost() {
-  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
 }
 
 function useState<T>(initial: T | (() => T)): [T, React.Dispatch<React.SetStateAction<T>>];
