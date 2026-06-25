@@ -317,6 +317,8 @@ Flow:
 | NFR-M02 | UI component ควรแยกตามหน้าที่ เช่น ImportPanel, PreviewPanel, MetadataForm, LibraryTable |
 | NFR-M03 | ควรมี test สำหรับ inspector filtering และ API validation |
 | NFR-M04 | เอกสาร setup, run, deploy และ troubleshooting ต้องอัปเดตตามระบบ |
+| NFR-M05 | Production build ต้องมี `npm run build` สำหรับ hosting platform ที่เรียก build script มาตรฐาน เช่น Vercel |
+| NFR-M06 | ถ้าต้องส่ง SQLite snapshot ไปกับ repository ต้อง track เฉพาะ `site-source-inspector.db` หลัง checkpoint แล้ว และไม่ track runtime WAL/SHM files |
 
 ### 5.5 Usability และ UX
 
