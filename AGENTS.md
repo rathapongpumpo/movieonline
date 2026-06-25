@@ -32,3 +32,5 @@ For every new implementation or design request in this project, follow this work
 5. Push to git only after tests pass.
    - Stage, commit, and push the completed change.
    - Do not push half-finished or untested work.
+   - After every successful push, wait about 1 minute, then open and verify the deployed site at `https://movieonline-two.vercel.app/`.
+   - If the deployment is still building or fails, report the exact visible result/log context instead of assuming the push is done.
