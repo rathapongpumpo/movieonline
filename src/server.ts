@@ -35,7 +35,7 @@ import {
 import { exportLibraryToGoogleSheets, listGoogleSheetAdminUsers } from "./googleSheets.js";
 import { discoverMovieCards, inspectSite, type InspectResult, type MediaItem } from "./inspector.js";
 
-const app = express();
+export const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const reactRoot = path.join(root, "public", "react");
@@ -330,9 +330,13 @@ app.delete("/api/episodes/:id", (req, res) => {
   res.status(204).end();
 });
 
-app.listen(port, () => {
-  console.log(`Site Source Inspector running at http://localhost:${port}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.log(`Site Source Inspector running at http://localhost:${port}`);
+  });
+}
+
+export default app;
 
 async function getAdminUsers(): Promise<AdminUser[]> {
   try {
