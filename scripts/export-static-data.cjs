@@ -6,57 +6,115 @@ const root = path.dirname(__dirname);
 const dbPath = path.join(root, "site-source-inspector.db");
 const outDir = path.join(root, "client", "public", "data");
 const posterDir = path.join(root, "client", "public", "posters");
+const thumbnailDir = path.join(root, "client", "public", "thumbnails");
 const outFile = path.join(outDir, "videos.json");
 
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(posterDir, { recursive: true });
+fs.mkdirSync(thumbnailDir, { recursive: true });
 
 const db = new Database(dbPath, { readonly: true });
 const rows = db.prepare("SELECT * FROM videos ORDER BY created_at DESC, id DESC").all();
 db.close();
 
-const videos = rows.map((row) => {
-  const id = Number(row.id);
-  const title = String(row.title ?? "");
-  const posterFile = `${id}.svg`;
-  fs.writeFileSync(path.join(posterDir, posterFile), buildPosterSvg(title, String(row.category ?? "Uncategorized"), id));
-  return {
-    id,
-    title,
-    description: String(row.description ?? ""),
-    thumbnail: String(row.thumbnail ?? ""),
-    fallbackThumbnail: `/posters/${posterFile}`,
-    category: String(row.category ?? "Uncategorized"),
-    pageUrl: String(row.page_url ?? ""),
-    sourceUrl: String(row.source_url ?? ""),
-    sourceType: String(row.source_type ?? "hls"),
-    playbackUrl: String(row.source_url ?? ""),
-    duration: row.duration === null || row.duration === undefined ? null : Number(row.duration),
-    createdAt: String(row.created_at ?? ""),
-    updatedAt: String(row.updated_at ?? "")
-  };
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });
 
-const categoryMap = new Map();
-for (const video of videos) {
-  const category = video.category || "Uncategorized";
-  categoryMap.set(category, (categoryMap.get(category) ?? 0) + 1);
+async function main() {
+  const videos = [];
+  let cachedCount = 0;
+  for (const row of rows) {
+    const id = Number(row.id);
+    const title = String(row.title ?? "");
+    const remoteThumbnail = String(row.thumbnail ?? "");
+    const posterFile = `${id}.svg`;
+    fs.writeFileSync(path.join(posterDir, posterFile), buildPosterSvg(title, String(row.category ?? "Uncategorized"), id));
+    const cachedThumbnail = await cacheRemoteThumbnail(id, remoteThumbnail);
+    if (cachedThumbnail) cachedCount += 1;
+    videos.push({
+      id,
+      title,
+      description: String(row.description ?? ""),
+      thumbnail: cachedThumbnail || remoteThumbnail,
+      remoteThumbnail,
+      fallbackThumbnail: `/posters/${posterFile}`,
+      category: String(row.category ?? "Uncategorized"),
+      pageUrl: String(row.page_url ?? ""),
+      sourceUrl: String(row.source_url ?? ""),
+      sourceType: String(row.source_type ?? "hls"),
+      playbackUrl: String(row.source_url ?? ""),
+      duration: row.duration === null || row.duration === undefined ? null : Number(row.duration),
+      createdAt: String(row.created_at ?? ""),
+      updatedAt: String(row.updated_at ?? "")
+    });
+  }
+
+  const categoryMap = new Map();
+  for (const video of videos) {
+    const category = video.category || "Uncategorized";
+    categoryMap.set(category, (categoryMap.get(category) ?? 0) + 1);
+  }
+
+  fs.writeFileSync(
+    outFile,
+    JSON.stringify(
+      {
+        videos,
+        total: videos.length,
+        categories: [...categoryMap.entries()].map(([name, count]) => ({ name, count }))
+      },
+      null,
+      2
+    )
+  );
+
+  console.log(`Exported ${videos.length} videos to ${path.relative(root, outFile)} (${cachedCount} cached thumbnails)`);
 }
 
-fs.writeFileSync(
-  outFile,
-  JSON.stringify(
-    {
-      videos,
-      total: videos.length,
-      categories: [...categoryMap.entries()].map(([name, count]) => ({ name, count }))
-    },
-    null,
-    2
-  )
-);
+async function cacheRemoteThumbnail(id, remoteUrl) {
+  if (!remoteUrl || !/^https?:\/\//i.test(remoteUrl)) return "";
+  try {
+    const response = await fetch(remoteUrl, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36",
+        accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        referer: new URL(remoteUrl).origin + "/"
+      },
+      signal: AbortSignal.timeout(12000),
+      redirect: "follow"
+    });
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!response.ok || !contentType.startsWith("image/")) return "";
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length < 512) return "";
+    const ext = extensionFromContentType(contentType) || extensionFromUrl(response.url || remoteUrl) || "jpg";
+    const fileName = `${id}.${ext}`;
+    fs.writeFileSync(path.join(thumbnailDir, fileName), bytes);
+    return `/thumbnails/${fileName}`;
+  } catch {
+    return "";
+  }
+}
 
-console.log(`Exported ${videos.length} videos to ${path.relative(root, outFile)}`);
+function extensionFromContentType(contentType) {
+  if (contentType.includes("webp")) return "webp";
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("jpeg") || contentType.includes("jpg")) return "jpg";
+  if (contentType.includes("svg")) return "svg";
+  if (contentType.includes("avif")) return "avif";
+  return "";
+}
+
+function extensionFromUrl(url) {
+  try {
+    const ext = path.extname(new URL(url).pathname).replace(".", "").toLowerCase();
+    return ["webp", "png", "jpg", "jpeg", "svg", "avif"].includes(ext) ? (ext === "jpeg" ? "jpg" : ext) : "";
+  } catch {
+    return "";
+  }
+}
 
 function buildPosterSvg(title, category, id) {
   const cleanTitle = stripLeadIn(title)

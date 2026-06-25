@@ -323,6 +323,7 @@ Flow:
 | NFR-M08 | Vercel deployment ต้องมี serverless API catch-all สำหรับ `/api/*` เพื่อไม่ให้ SPA rewrite ส่ง HTML กลับไปแทน JSON API |
 | NFR-M09 | Frontend production ต้องมี static JSON fallback จาก SQLite snapshot เพื่อให้ catalog/watch metadata ยังแสดงได้เมื่อ serverless API ใช้งานไม่ได้ |
 | NFR-M10 | Static production catalog ต้องใช้โปสเตอร์หนังจริงจาก metadata เป็นค่าแรกเสมอ และใช้ local generated poster เฉพาะเป็น fallback เมื่อรูปจริงโหลดไม่ได้เท่านั้น |
+| NFR-M11 | Build pipeline ต้องพยายาม cache ไฟล์โปสเตอร์หนังจริงจาก remote thumbnail มาไว้ใต้ static assets ของเว็บเอง เพื่อลดปัญหา hotlink/DNS/CDN ที่ทำให้ production โหลดรูปไม่ขึ้น |
 
 ### 5.5 Usability และ UX
 
