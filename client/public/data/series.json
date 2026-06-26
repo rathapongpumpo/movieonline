@@ -1,6 +1,33 @@
 {
   "series": [
     {
+      "id": 36,
+      "title": "Spider-Noir (2026) สไปเดอร์-นัวร์ ไอ้แมงมุมพันธุ์นรก - นายหนัง ดูหนังออนไลน์เต็มเรื่อง",
+      "description": "นักสืบเอกชน เบ็น ไรลีย์รับจ้างทำคดีง่ายๆ สองสามคดี จนกระทั่งมาเฟีย ปีศาจ และสาวสวยสุดอันตราย พาเขาไปเผชิญหน้ากับชีวิตก่อนหน้านี้ในฐานะซูเปอร์ฮีโร่คนเดียวขอ",
+      "poster": "/thumbnails/series-36.webp",
+      "remotePoster": "https://image.tmdb.org/t/p/w780/mkwVoyP9bFSmfVqU8FJyem52hVR.jpg",
+      "fallbackPoster": "/posters/series-36.svg",
+      "category": "ซีรีส์",
+      "status": "draft",
+      "pageUrl": "https://9.9nung.com/tvshows/%E0%B8%AA%E0%B9%84%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B8%AD%E0%B8%A3%E0%B9%8C-%E0%B8%99%E0%B8%B1%E0%B8%A7%E0%B8%A3%E0%B9%8C-%E0%B9%84%E0%B8%AD%E0%B9%89%E0%B9%81%E0%B8%A1%E0%B8%87%E0%B8%A1%E0%B8%B8",
+      "createdAt": "2026-06-26 06:12:09",
+      "updatedAt": "2026-06-26 06:12:09",
+      "episodes": [
+        {
+          "id": 197,
+          "seriesId": 36,
+          "episodeNumber": 1,
+          "title": "ตอนที่ 1",
+          "description": "นักสืบเอกชน เบ็น ไรลีย์รับจ้างทำคดีง่ายๆ สองสามคดี จนกระทั่งมาเฟีย ปีศาจ และสาวสวยสุดอันตราย พาเขาไปเผชิญหน้ากับชีวิตก่อนหน้านี้ในฐานะซูเปอร์ฮีโร่คนเดียวขอ",
+          "thumbnail": "https://image.tmdb.org/t/p/w780/mkwVoyP9bFSmfVqU8FJyem52hVR.jpg",
+          "pageUrl": "https://9.9nung.com/tvshows/%E0%B8%AA%E0%B9%84%E0%B8%9B%E0%B9%80%E0%B8%94%E0%B8%AD%E0%B8%A3%E0%B9%8C-%E0%B8%99%E0%B8%B1%E0%B8%A7%E0%B8%A3%E0%B9%8C-%E0%B9%84%E0%B8%AD%E0%B9%89%E0%B9%81%E0%B8%A1%E0%B8%87%E0%B8%A1%E0%B8%B8",
+          "sourceUrl": "",
+          "sourceType": "hls",
+          "status": "draft"
+        }
+      ]
+    },
+    {
       "id": 12,
       "title": "ดูหนัง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ดูหนังฟรี หนังHD",
       "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
@@ -1987,11 +2014,11 @@
       ]
     }
   ],
-  "total": 18,
+  "total": 19,
   "categories": [
     {
       "name": "ซีรีส์",
-      "count": 2
+      "count": 3
     },
     {
       "name": "Biography ชีวิตจริง",

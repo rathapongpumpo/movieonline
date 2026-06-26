@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 
 export type VideoRecord = {
   id: number;
@@ -96,7 +97,31 @@ export type VideoPage = {
 };
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const db = new Database(path.join(root, "site-source-inspector.db"));
+let dbPath = path.join(root, "site-source-inspector.db");
+
+if (process.env.VERCEL) {
+  const tmpPath = path.join("/tmp", "site-source-inspector.db");
+  try {
+    if (!fs.existsSync(tmpPath) && fs.existsSync(dbPath)) {
+      fs.copyFileSync(dbPath, tmpPath);
+      const walPath = `${dbPath}-wal`;
+      const tmpWalPath = `${tmpPath}-wal`;
+      if (fs.existsSync(walPath)) {
+        fs.copyFileSync(walPath, tmpWalPath);
+      }
+      const shmPath = `${dbPath}-shm`;
+      const tmpShmPath = `${tmpPath}-shm`;
+      if (fs.existsSync(shmPath)) {
+        fs.copyFileSync(shmPath, tmpShmPath);
+      }
+    }
+    dbPath = tmpPath;
+  } catch (err) {
+    console.error("Failed to copy database to /tmp on Vercel:", err);
+  }
+}
+
+const db = new Database(dbPath);
 
 db.pragma("journal_mode = WAL");
 db.exec(`

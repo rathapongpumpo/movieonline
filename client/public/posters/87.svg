@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="540" viewBox="0 0 360 540" role="img" aria-label="Tuklas (2026)">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+    <style>
+      .brand { fill: #e0f2fe; font: 700 18px Arial, sans-serif; letter-spacing: 2px; }
+      .title { fill: #fff; font: 800 31px Arial, sans-serif; }
+      .meta { fill: #cbd5e1; font: 600 16px Arial, sans-serif; }
+    </style>
+  </defs>
+  <rect width="360" height="540" fill="url(#bg)"/>
+  <rect x="0" y="0" width="360" height="8" fill="url(#accent)"/>
+  <circle cx="286" cy="82" r="78" fill="#2563eb" opacity="0.2"/>
+  <circle cx="70" cy="470" r="92" fill="#2563eb" opacity="0.16"/>
+  <text x="32" y="62" class="brand">MOVIE ONLINE</text>
+  <text x="32" y="102" class="meta">โรแมนติก</text>
+  <text x="32" y="150" class="title">Tuklas (2026)</text>
+  <rect x="32" y="458" width="120" height="4" rx="2" fill="url(#accent)"/>
+  <text x="32" y="502" class="meta">WATCH NOW</text>
+</svg>
