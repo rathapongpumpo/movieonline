@@ -24,7 +24,9 @@ export function createSessionCookie(username: string): string {
   const issuedAt = Date.now();
   const payload = Buffer.from(JSON.stringify({ username, issuedAt })).toString("base64url");
   const signature = sign(payload);
-  return `${COOKIE_NAME}=${payload}.${signature}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`;
+  const isProd = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+  const secureFlag = isProd ? "; Secure" : "";
+  return `${COOKIE_NAME}=${payload}.${signature}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}${secureFlag}`;
 }
 
 export function clearSessionCookie(): string {
