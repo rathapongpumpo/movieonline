@@ -14,8 +14,7 @@ const COOKIE_NAME = "ssi_admin";
 const DEFAULT_SECRET = "site-source-inspector-local-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const usersFilePath = path.join(root, "data", "users.json");
+const usersFilePath = path.join(process.cwd(), "data", "users.json");
 
 export const defaultAdminUsers: AdminUser[] = [
   {

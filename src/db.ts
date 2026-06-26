@@ -95,7 +95,7 @@ export type VideoPage = {
   categories: CategorySummary[];
 };
 
-const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const root = process.cwd();
 
 // Establish the database folder path
 let dbFolder = path.join(root, "data");
