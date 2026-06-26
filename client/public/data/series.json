@@ -1,83 +1,113 @@
 {
   "series": [
     {
-      "id": 35,
-      "title": "ดูหนัง In Love Forever (2026) วาดฝันวันวิวาห์ EP.1-12 ดูหนังฟรี หนังHD",
-      "description": "ดูหนังออนไลน์ เรื่อง In Love Forever (2026) วาดฝันวันวิวาห์ EP.1-12 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-      "poster": "/thumbnails/series-35.webp",
-      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/In-Love-Forever-2026-e1782352024975.webp",
-      "fallbackPoster": "/posters/series-35.svg",
-      "category": "Biography ชีวิตจริง",
+      "id": 12,
+      "title": "ดูหนัง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ดูหนังฟรี หนังHD",
+      "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+      "poster": "/thumbnails/series-12.webp",
+      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+      "fallbackPoster": "/posters/series-12.svg",
+      "category": "ซีรีส์",
       "status": "published",
-      "pageUrl": "https://www.24hd.net/in-love-forever-2026",
-      "createdAt": "2026-06-25 15:32:28",
-      "updatedAt": "2026-06-25 15:32:28",
+      "pageUrl": "https://www.24hd.net/the-evil-lawyer-2026",
+      "createdAt": "2026-06-13 07:16:25",
+      "updatedAt": "2026-06-25 16:07:19",
       "episodes": [
         {
-          "id": 196,
-          "seriesId": 35,
+          "id": 11,
+          "seriesId": 12,
           "episodeNumber": 1,
-          "title": "ดูหนัง In Love Forever (2026) วาดฝันวันวิวาห์ EP.1-12 ดูหนังฟรี หนังHD",
-          "description": "ดูหนังออนไลน์ เรื่อง In Love Forever (2026) วาดฝันวันวิวาห์ EP.1-12 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/In-Love-Forever-2026-e1782352024975.webp",
-          "pageUrl": "https://www.24hd.net/in-love-forever-2026",
-          "sourceUrl": "https://media.vdohls.com/T4IpY-zZ_hXGO/playlist.m3u8",
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.1",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/GwPA_apA-fQWA",
+          "sourceUrl": "https://media.vdohls.com/GwPA_apA-fQWA/playlist.m3u8",
           "sourceType": "hls",
-          "status": "published"
-        }
-      ]
-    },
-    {
-      "id": 34,
-      "title": "ดูหนัง The Scammer Games (2026) เกมส์โกงเกมส์ EP.1-19 ดูหนังฟรี หนังHD",
-      "description": "ดูหนังออนไลน์ เรื่อง The Scammer Games (2026) เกมส์โกงเกมส์ EP.1-19 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-      "poster": "/thumbnails/series-34.webp",
-      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/The-Scammer-Games-2026-e1782352270168.webp",
-      "fallbackPoster": "/posters/series-34.svg",
-      "category": "Biography ชีวิตจริง",
-      "status": "published",
-      "pageUrl": "https://www.24hd.net/the-scammer-games-2026",
-      "createdAt": "2026-06-25 15:32:28",
-      "updatedAt": "2026-06-25 15:32:28",
-      "episodes": [
+          "status": "draft"
+        },
         {
-          "id": 195,
-          "seriesId": 34,
-          "episodeNumber": 1,
-          "title": "ดูหนัง The Scammer Games (2026) เกมส์โกงเกมส์ EP.1-19 ดูหนังฟรี หนังHD",
-          "description": "ดูหนังออนไลน์ เรื่อง The Scammer Games (2026) เกมส์โกงเกมส์ EP.1-19 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Scammer-Games-2026-e1782352270168.webp",
-          "pageUrl": "https://www.24hd.net/the-scammer-games-2026",
-          "sourceUrl": "https://media.vdohls.com/Rx_1bJX4op-FF/playlist.m3u8",
-          "sourceType": "hls",
-          "status": "published"
-        }
-      ]
-    },
-    {
-      "id": 33,
-      "title": "ดูหนัง House Of The Dragon Season 3 (2026) ตระกูลแห่งมังกร ซีซั่น 3 EP.1-8 ดูหนังฟรี หนังHD",
-      "description": "ดูหนังออนไลน์ เรื่อง House of the Dragon Season 3 (2026) ตระกูลแห่งมังกร ซีซั่น 3 EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-      "poster": "/thumbnails/series-33.webp",
-      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/House-of-the-Dragon-Season-3-2026-e1782101507441.webp",
-      "fallbackPoster": "/posters/series-33.svg",
-      "category": "Fantasy",
-      "status": "published",
-      "pageUrl": "https://www.24hd.net/house-of-the-dragon-season-3-2026",
-      "createdAt": "2026-06-25 15:32:28",
-      "updatedAt": "2026-06-25 15:32:28",
-      "episodes": [
+          "id": 12,
+          "seriesId": 12,
+          "episodeNumber": 2,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.2",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/AK_8i-cRB38fK",
+          "sourceUrl": "https://player77hdfree.xyz/embed/AK_8i-cRB38fK",
+          "sourceType": "embed",
+          "status": "draft"
+        },
         {
-          "id": 194,
-          "seriesId": 33,
-          "episodeNumber": 1,
-          "title": "ดูหนัง House Of The Dragon Season 3 (2026) ตระกูลแห่งมังกร ซีซั่น 3 EP.1-8 ดูหนังฟรี หนังHD",
-          "description": "ดูหนังออนไลน์ เรื่อง House of the Dragon Season 3 (2026) ตระกูลแห่งมังกร ซีซั่น 3 EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/House-of-the-Dragon-Season-3-2026-e1782101507441.webp",
-          "pageUrl": "https://www.24hd.net/house-of-the-dragon-season-3-2026",
-          "sourceUrl": "https://media.vdohls.com/B-AGgcoU6_YEn/playlist.m3u8",
-          "sourceType": "hls",
-          "status": "published"
+          "id": 13,
+          "seriesId": 12,
+          "episodeNumber": 3,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.3",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/VO-V1qSpA_nDK",
+          "sourceUrl": "https://player77hdfree.xyz/embed/VO-V1qSpA_nDK",
+          "sourceType": "embed",
+          "status": "draft"
+        },
+        {
+          "id": 14,
+          "seriesId": 12,
+          "episodeNumber": 4,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.4",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/10-eGfVhYm_Aq",
+          "sourceUrl": "https://player77hdfree.xyz/embed/10-eGfVhYm_Aq",
+          "sourceType": "embed",
+          "status": "draft"
+        },
+        {
+          "id": 15,
+          "seriesId": 12,
+          "episodeNumber": 5,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.5",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/I-Vm_WiWECtyU",
+          "sourceUrl": "https://player77hdfree.xyz/embed/I-Vm_WiWECtyU",
+          "sourceType": "embed",
+          "status": "draft"
+        },
+        {
+          "id": 16,
+          "seriesId": 12,
+          "episodeNumber": 6,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.6",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/qOcY-ozI_0zUm",
+          "sourceUrl": "https://player77hdfree.xyz/embed/qOcY-ozI_0zUm",
+          "sourceType": "embed",
+          "status": "draft"
+        },
+        {
+          "id": 17,
+          "seriesId": 12,
+          "episodeNumber": 7,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.7",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/Wdol-a_OOKqMK",
+          "sourceUrl": "https://player77hdfree.xyz/embed/Wdol-a_OOKqMK",
+          "sourceType": "embed",
+          "status": "draft"
+        },
+        {
+          "id": 18,
+          "seriesId": 12,
+          "episodeNumber": 8,
+          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.8",
+          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
+          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
+          "pageUrl": "https://player77hdfree.xyz/embed/U_3gU00yA-BmL",
+          "sourceUrl": "https://player77hdfree.xyz/embed/U_3gU00yA-BmL",
+          "sourceType": "embed",
+          "status": "draft"
         }
       ]
     },
@@ -1810,309 +1840,6 @@
       ]
     },
     {
-      "id": 16,
-      "title": "ดูหนัง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ดูหนังฟรี หนังHD",
-      "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-      "poster": "/thumbnails/series-16.webp",
-      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-      "fallbackPoster": "/posters/series-16.svg",
-      "category": "Biography ชีวิตจริง",
-      "status": "draft",
-      "pageUrl": "https://www.24hd.net/ashes-to-crown-2026",
-      "createdAt": "2026-06-25 15:04:27",
-      "updatedAt": "2026-06-25 15:04:28",
-      "episodes": [
-        {
-          "id": 46,
-          "seriesId": 16,
-          "episodeNumber": 1,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/QCh_1f-FZRviK",
-          "sourceUrl": "https://media.vdohls.com/QCh_1f-FZRviK/playlist.m3u8",
-          "sourceType": "hls",
-          "status": "draft"
-        },
-        {
-          "id": 47,
-          "seriesId": 16,
-          "episodeNumber": 2,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.2",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/XbW-505nI_kvB",
-          "sourceUrl": "https://player77hdfree.xyz/embed/XbW-505nI_kvB",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 48,
-          "seriesId": 16,
-          "episodeNumber": 3,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.3",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/LBRFWl_SCN-Hy",
-          "sourceUrl": "https://player77hdfree.xyz/embed/LBRFWl_SCN-Hy",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 49,
-          "seriesId": 16,
-          "episodeNumber": 4,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.4",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/kH1-YtR_dyvWr",
-          "sourceUrl": "https://player77hdfree.xyz/embed/kH1-YtR_dyvWr",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 50,
-          "seriesId": 16,
-          "episodeNumber": 5,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.5",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/9T_wIKn-IbSiN",
-          "sourceUrl": "https://player77hdfree.xyz/embed/9T_wIKn-IbSiN",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 51,
-          "seriesId": 16,
-          "episodeNumber": 6,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.6",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/a-IG0_7WnguYv",
-          "sourceUrl": "https://player77hdfree.xyz/embed/a-IG0_7WnguYv",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 52,
-          "seriesId": 16,
-          "episodeNumber": 7,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.7",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/YU-IBLGbtM_gl",
-          "sourceUrl": "https://player77hdfree.xyz/embed/YU-IBLGbtM_gl",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 53,
-          "seriesId": 16,
-          "episodeNumber": 8,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.8",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/s1xb_i-vgS20R",
-          "sourceUrl": "https://player77hdfree.xyz/embed/s1xb_i-vgS20R",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 54,
-          "seriesId": 16,
-          "episodeNumber": 9,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.9",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/nf_zneU5fO-ed",
-          "sourceUrl": "https://player77hdfree.xyz/embed/nf_zneU5fO-ed",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 55,
-          "seriesId": 16,
-          "episodeNumber": 10,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.10",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/TB-CJ5RYd_9vE",
-          "sourceUrl": "https://player77hdfree.xyz/embed/TB-CJ5RYd_9vE",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 56,
-          "seriesId": 16,
-          "episodeNumber": 11,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.11",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/2D-v_t6apkZ9v",
-          "sourceUrl": "https://player77hdfree.xyz/embed/2D-v_t6apkZ9v",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 57,
-          "seriesId": 16,
-          "episodeNumber": 12,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.12",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/A_KndR-t20WY8",
-          "sourceUrl": "https://player77hdfree.xyz/embed/A_KndR-t20WY8",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 58,
-          "seriesId": 16,
-          "episodeNumber": 13,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.13",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/t4A8_DZTCs-gu",
-          "sourceUrl": "https://player77hdfree.xyz/embed/t4A8_DZTCs-gu",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 59,
-          "seriesId": 16,
-          "episodeNumber": 14,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.14",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/go1A-agaUV_Fc",
-          "sourceUrl": "https://player77hdfree.xyz/embed/go1A-agaUV_Fc",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 60,
-          "seriesId": 16,
-          "episodeNumber": 15,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.15",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/s_6Z-pCa9p7eY",
-          "sourceUrl": "https://player77hdfree.xyz/embed/s_6Z-pCa9p7eY",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 61,
-          "seriesId": 16,
-          "episodeNumber": 16,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.16",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/FElh8Y-Syo_e8",
-          "sourceUrl": "https://player77hdfree.xyz/embed/FElh8Y-Syo_e8",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 62,
-          "seriesId": 16,
-          "episodeNumber": 17,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.17",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/2JB8W_en-aAZW",
-          "sourceUrl": "https://player77hdfree.xyz/embed/2JB8W_en-aAZW",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 63,
-          "seriesId": 16,
-          "episodeNumber": 18,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.18",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/ZLa-094kIg_np",
-          "sourceUrl": "https://player77hdfree.xyz/embed/ZLa-094kIg_np",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 64,
-          "seriesId": 16,
-          "episodeNumber": 19,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.19",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/VCgef_8r-QnN9",
-          "sourceUrl": "https://player77hdfree.xyz/embed/VCgef_8r-QnN9",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 65,
-          "seriesId": 16,
-          "episodeNumber": 20,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.20",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/6YN_tH-kioiQk",
-          "sourceUrl": "https://player77hdfree.xyz/embed/6YN_tH-kioiQk",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 66,
-          "seriesId": 16,
-          "episodeNumber": 21,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.21",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/SoMS_H-cekkU1",
-          "sourceUrl": "https://player77hdfree.xyz/embed/SoMS_H-cekkU1",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 67,
-          "seriesId": 16,
-          "episodeNumber": 22,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.22",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/yDrO_hZ9M-p4w",
-          "sourceUrl": "https://player77hdfree.xyz/embed/yDrO_hZ9M-p4w",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 68,
-          "seriesId": 16,
-          "episodeNumber": 23,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.23",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/jj_Q1R-8WRXLr",
-          "sourceUrl": "https://player77hdfree.xyz/embed/jj_Q1R-8WRXLr",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 69,
-          "seriesId": 16,
-          "episodeNumber": 24,
-          "title": "Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.24",
-          "description": "ดูหนังออนไลน์ เรื่อง Ashes To Crown (2026) พลิกชะตาเหนือฟ้า EP.1-24 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/Ashes-To-Crown-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/RCeof5_3-RyVM",
-          "sourceUrl": "https://player77hdfree.xyz/embed/RCeof5_3-RyVM",
-          "sourceType": "embed",
-          "status": "draft"
-        }
-      ]
-    },
-    {
       "id": 15,
       "title": "ดูหนัง The South Bureau (2026) บันทึกคดีแดนใต้ EP.1-33 ดูหนังฟรี หนังHD",
       "description": "ดูหนังออนไลน์ เรื่อง The South Bureau (2026) บันทึกคดีแดนใต้ EP.1-33 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
@@ -2258,128 +1985,17 @@
           "status": "draft"
         }
       ]
-    },
-    {
-      "id": 12,
-      "title": "ดูหนัง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ดูหนังฟรี หนังHD",
-      "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-      "poster": "/thumbnails/series-12.webp",
-      "remotePoster": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-      "fallbackPoster": "/posters/series-12.svg",
-      "category": "ซีรีส์",
-      "status": "draft",
-      "pageUrl": "https://www.24hd.net/the-evil-lawyer-2026",
-      "createdAt": "2026-06-13 07:16:25",
-      "updatedAt": "2026-06-13 07:16:43",
-      "episodes": [
-        {
-          "id": 11,
-          "seriesId": 12,
-          "episodeNumber": 1,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.1",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/GwPA_apA-fQWA",
-          "sourceUrl": "https://media.vdohls.com/GwPA_apA-fQWA/playlist.m3u8",
-          "sourceType": "hls",
-          "status": "draft"
-        },
-        {
-          "id": 12,
-          "seriesId": 12,
-          "episodeNumber": 2,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.2",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/AK_8i-cRB38fK",
-          "sourceUrl": "https://player77hdfree.xyz/embed/AK_8i-cRB38fK",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 13,
-          "seriesId": 12,
-          "episodeNumber": 3,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.3",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/VO-V1qSpA_nDK",
-          "sourceUrl": "https://player77hdfree.xyz/embed/VO-V1qSpA_nDK",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 14,
-          "seriesId": 12,
-          "episodeNumber": 4,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.4",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/10-eGfVhYm_Aq",
-          "sourceUrl": "https://player77hdfree.xyz/embed/10-eGfVhYm_Aq",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 15,
-          "seriesId": 12,
-          "episodeNumber": 5,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.5",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/I-Vm_WiWECtyU",
-          "sourceUrl": "https://player77hdfree.xyz/embed/I-Vm_WiWECtyU",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 16,
-          "seriesId": 12,
-          "episodeNumber": 6,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.6",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/qOcY-ozI_0zUm",
-          "sourceUrl": "https://player77hdfree.xyz/embed/qOcY-ozI_0zUm",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 17,
-          "seriesId": 12,
-          "episodeNumber": 7,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.7",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/Wdol-a_OOKqMK",
-          "sourceUrl": "https://player77hdfree.xyz/embed/Wdol-a_OOKqMK",
-          "sourceType": "embed",
-          "status": "draft"
-        },
-        {
-          "id": 18,
-          "seriesId": 12,
-          "episodeNumber": 8,
-          "title": "The Evil Lawyer (2026) ทนายปีศาจ EP.8",
-          "description": "ดูหนังออนไลน์ เรื่อง The Evil Lawyer (2026) ทนายปีศาจ EP.1-8 ปีที่ฉาย 2026 ดูหนังล่าสุด หนัง24HD หนังพากย์ไทยดูฟรี",
-          "thumbnail": "https://www.24hd.net/wp-content/uploads/2026/06/The-Evil-Lawyer-2026.webp",
-          "pageUrl": "https://player77hdfree.xyz/embed/U_3gU00yA-BmL",
-          "sourceUrl": "https://player77hdfree.xyz/embed/U_3gU00yA-BmL",
-          "sourceType": "embed",
-          "status": "draft"
-        }
-      ]
     }
   ],
-  "total": 22,
+  "total": 18,
   "categories": [
     {
-      "name": "Biography ชีวิตจริง",
-      "count": 15
+      "name": "ซีรีส์",
+      "count": 2
     },
     {
-      "name": "Fantasy",
-      "count": 1
+      "name": "Biography ชีวิตจริง",
+      "count": 12
     },
     {
       "name": "NETFLIX",
@@ -2392,10 +2008,6 @@
     {
       "name": "Comedy ตลก",
       "count": 1
-    },
-    {
-      "name": "ซีรีส์",
-      "count": 2
     }
   ]
 }

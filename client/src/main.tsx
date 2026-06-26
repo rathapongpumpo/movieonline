@@ -2618,7 +2618,6 @@ function episodeToForm(episode: EpisodeRecord): EpisodeForm {
 
 function buildEpisodeDrafts(result: InspectResult, firstSource: Candidate | undefined, fallbackUrl: string): EpisodeForm[] {
   const detected = result.episodes ?? [];
-  if (detected.length === 0) return [];
   if (detected.length === 0) {
     return [
       {

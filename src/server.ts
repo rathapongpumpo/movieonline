@@ -369,7 +369,8 @@ async function proxyMedia(targetUrl: string, range: string | undefined, res: exp
   try {
     const response = await fetch(targetUrl, {
       headers: range ? { range } : undefined,
-      redirect: "follow"
+      redirect: "follow",
+      signal: AbortSignal.timeout(15000)
     });
     const contentType = response.headers.get("content-type") ?? "";
     const finalUrl = response.url || targetUrl;
@@ -463,7 +464,8 @@ function findFirstPlaylistEntry(text: string, playlistUrl: string): string | und
 async function probeMediaBytes(url: string) {
   const response = await fetch(url, {
     headers: { range: "bytes=0-63" },
-    redirect: "follow"
+    redirect: "follow",
+    signal: AbortSignal.timeout(10000)
   });
   if (!response.ok && response.status !== 206) return { ok: false, reason: `Segment fetch failed ${response.status}`, url };
   const contentType = response.headers.get("content-type") ?? "";
