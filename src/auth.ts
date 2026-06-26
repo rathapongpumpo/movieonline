@@ -1,4 +1,7 @@
 import crypto from "node:crypto";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 export type AdminUser = {
   username: string;
@@ -11,6 +14,9 @@ const COOKIE_NAME = "ssi_admin";
 const DEFAULT_SECRET = "site-source-inspector-local-secret";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 
+const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const usersFilePath = path.join(root, "data", "users.json");
+
 export const defaultAdminUsers: AdminUser[] = [
   {
     username: "rpumpo",
@@ -19,6 +25,20 @@ export const defaultAdminUsers: AdminUser[] = [
     active: true
   }
 ];
+
+export function getAdminUsersSync(): AdminUser[] {
+  try {
+    if (fs.existsSync(usersFilePath)) {
+      const data = JSON.parse(fs.readFileSync(usersFilePath, "utf8"));
+      if (Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to read users.json:", err);
+  }
+  return defaultAdminUsers;
+}
 
 export function createSessionCookie(username: string): string {
   const issuedAt = Date.now();

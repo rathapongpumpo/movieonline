@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import {
   clearSessionCookie,
   createSessionCookie,
-  defaultAdminUsers,
+  getAdminUsersSync,
   getSessionUser,
   validateAdminCredentials,
   type AdminUser
@@ -343,12 +343,7 @@ if (!process.env.VERCEL) {
 export default app;
 
 async function getAdminUsers(): Promise<AdminUser[]> {
-  try {
-    const sheetUsers = await listGoogleSheetAdminUsers();
-    return [...defaultAdminUsers, ...sheetUsers];
-  } catch {
-    return defaultAdminUsers;
-  }
+  return getAdminUsersSync();
 }
 
 function requiresAdmin(method: string, pathname: string): boolean {

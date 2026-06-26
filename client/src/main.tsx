@@ -1907,6 +1907,7 @@ function CatalogPage() {
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("กำลังโหลด...");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     loadCatalog();
@@ -1938,13 +1939,32 @@ function CatalogPage() {
           <a className="active" href="/">หนัง</a>
           <a href="/?type=series">ซีรีส์</a>
         </nav>
-        <nav className="category-menu">
-          {["All", ...categories.map((item) => item.name)].map((item) => (
-            <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
-              {item === "All" ? "ทั้งหมด" : displayCategory(item)}
-            </button>
-          ))}
-        </nav>
+        <div className="category-dropdown-container">
+          <button
+            type="button"
+            className="category-dropdown-btn"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            หมวดหมู่ {category !== "All" ? `(${displayCategory(category)})` : ""} ▾
+          </button>
+          {dropdownOpen && (
+            <div className="category-dropdown-menu">
+              {["All", ...categories.map((item) => item.name)].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={category === item ? "active" : ""}
+                  onClick={() => {
+                    setCategory(item);
+                    setDropdownOpen(false);
+                  }}
+                >
+                  {item === "All" ? "ทั้งหมด" : displayCategory(item)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="catalog-actions">
           <input
             value={searchDraft}
@@ -1968,7 +1988,6 @@ function CatalogPage() {
               <a className="play-link" href={`/watch/${featured.id}`}>
                 เล่น
               </a>
-              <span>มีทั้งหมด {total} เรื่อง</span>
             </div>
           </div>
         </section>
@@ -2041,6 +2060,7 @@ function SeriesCatalogPage() {
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("กำลังโหลดซีรีส์...");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     fetchSeriesPage({ search, category })
@@ -2063,13 +2083,32 @@ function SeriesCatalogPage() {
           <a href="/">หนัง</a>
           <a className="active" href="/?type=series">ซีรีส์</a>
         </nav>
-        <nav className="category-menu">
-          {["All", ...categories.map((item) => item.name)].map((item) => (
-            <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>
-              {item === "All" ? "ทั้งหมด" : displayCategory(item)}
-            </button>
-          ))}
-        </nav>
+        <div className="category-dropdown-container">
+          <button
+            type="button"
+            className="category-dropdown-btn"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            หมวดหมู่ {category !== "All" ? `(${displayCategory(category)})` : ""} ▾
+          </button>
+          {dropdownOpen && (
+            <div className="category-dropdown-menu">
+              {["All", ...categories.map((item) => item.name)].map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={category === item ? "active" : ""}
+                  onClick={() => {
+                    setCategory(item);
+                    setDropdownOpen(false);
+                  }}
+                >
+                  {item === "All" ? "ทั้งหมด" : displayCategory(item)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="catalog-actions">
           <input
             value={searchDraft}
@@ -2091,7 +2130,6 @@ function SeriesCatalogPage() {
             <p>{featured.description}</p>
             <div className="hero-actions">
               <a className="play-link" href={`/series/${featured.id}`}>เล่นซีรีส์</a>
-              <span>มีทั้งหมด {items.length} เรื่อง</span>
             </div>
           </div>
         </section>
@@ -2455,110 +2493,43 @@ function ImagePreview({ src, title, fallbackSrc }: { src: string; title: string;
   );
 }
 
-async function fetchVideoPage({
-  page,
-  pageSize,
-  search,
-  category
-}: {
+async function fetchVideoPage(query: {
   page: number;
   pageSize: number;
   search: string;
   category: string;
 }): Promise<VideoPage> {
   const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-    search,
-    category
+    page: String(query.page),
+    pageSize: String(query.pageSize),
+    search: query.search,
+    category: query.category
   });
   const response = await fetch(`/api/videos?${params.toString()}`);
-  try {
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Load failed");
-    return data;
-  } catch (error) {
-    return fetchStaticVideoPage({ page, pageSize, search, category });
-  }
-}
-
-async function fetchStaticVideoPage({
-  page,
-  pageSize,
-  search,
-  category
-}: {
-  page: number;
-  pageSize: number;
-  search: string;
-  category: string;
-}): Promise<VideoPage> {
-  const response = await fetch("/data/videos.json");
-  const data = (await response.json()) as Pick<VideoPage, "videos" | "total" | "categories">;
-  if (!response.ok) throw new Error("Load failed");
-  const searchText = search.trim().toLowerCase();
-  const filtered = data.videos.filter((video) => {
-    const matchesCategory = !category || category === "All" || video.category === category;
-    const matchesSearch =
-      !searchText ||
-      `${video.title} ${video.description} ${video.pageUrl}`.toLowerCase().includes(searchText);
-    return matchesCategory && matchesSearch;
-  });
-  const offset = (page - 1) * pageSize;
-  return {
-    videos: filtered.slice(offset, offset + pageSize),
-    total: filtered.length,
-    page,
-    pageSize,
-    categories: data.categories
-  };
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Load failed");
+  return data;
 }
 
 async function fetchWatchVideo(id: string): Promise<{ video: VideoRecord; error?: string }> {
-  try {
-    const response = await fetch(`/api/watch/${encodeURIComponent(id)}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Load failed");
-    return data;
-  } catch {
-    const staticData = await fetchStaticVideoPage({ page: 1, pageSize: 100, search: "", category: "All" });
-    const video = staticData.videos.find((item) => String(item.id) === String(id));
-    const legacySeriesId = legacyWatchToSeries[String(id)];
-    if (!video && legacySeriesId) {
-      window.location.replace(`/series/${legacySeriesId}`);
-      throw new Error("Redirecting to series");
-    }
-    if (!video) throw new Error("Video not found");
-    return { video };
-  }
+  const response = await fetch(`/api/watch/${encodeURIComponent(id)}`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Load failed");
+  return data;
 }
 
 async function fetchSeriesPage({ search, category }: { search: string; category: string }): Promise<SeriesPageData> {
-  try {
-    const response = await fetch("/api/series");
-    const data = (await response.json()) as { series?: SeriesRecord[]; error?: string };
-    if (!response.ok) throw new Error(data.error || "Load failed");
-    return filterSeriesPage(data.series ?? [], search, category);
-  } catch {
-    const response = await fetch("/data/series.json");
-    const data = (await response.json()) as SeriesPageData;
-    if (!response.ok) throw new Error("Load failed");
-    return filterSeriesPage(data.series ?? [], search, category);
-  }
+  const response = await fetch("/api/series");
+  const data = (await response.json()) as { series?: SeriesRecord[]; error?: string };
+  if (!response.ok) throw new Error(data.error || "Load failed");
+  return filterSeriesPage(data.series ?? [], search, category);
 }
 
 async function fetchSeriesById(id: string): Promise<{ series?: SeriesRecord; error?: string }> {
-  try {
-    const response = await fetch(`/api/series/${encodeURIComponent(id)}`);
-    const data = (await response.json()) as { series?: SeriesRecord; error?: string };
-    if (!response.ok) throw new Error(data.error || "Load failed");
-    return data;
-  } catch {
-    const page = await fetchSeriesPage({ search: "", category: "All" });
-    const series = page.series.find((item) => String(item.id) === String(id));
-    if (!series) return { error: "Series not found" };
-    return { series };
-  }
+  const response = await fetch(`/api/series/${encodeURIComponent(id)}`);
+  const data = (await response.json()) as { series?: SeriesRecord; error?: string };
+  if (!response.ok) throw new Error(data.error || "Load failed");
+  return data;
 }
 
 function filterSeriesPage(items: SeriesRecord[], search: string, category: string): SeriesPageData {
