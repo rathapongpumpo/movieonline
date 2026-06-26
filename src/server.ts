@@ -494,6 +494,15 @@ function isPlayableSource(item: MediaItem): boolean {
   if (/\/hdr__[^/]+\.bin(?:\?|$)/.test(item.finalUrl)) return false;
   if (/\/s_\d+\.bin(?:\?|$)/.test(item.finalUrl)) return false;
   if (isLikelySidecarPlaylist(item.finalUrl)) return false;
+
+  const isMp4 = item.finalUrl.toLowerCase().includes(".mp4") || item.contentType?.includes("video/mp4");
+  if (isMp4) {
+    const duration = item.duration;
+    if (typeof duration === "number" && duration > 0 && duration < 1200) {
+      return false;
+    }
+  }
+
   return isDirectVideoSource(item);
 }
 

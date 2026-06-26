@@ -31,6 +31,7 @@ export type MediaItem = {
     height?: number;
   };
   probe?: SourceProbe;
+  duration?: number;
 };
 
 export type SourceProbe = {
@@ -372,7 +373,31 @@ async function inspectPage(page: Page, pageUrl: string, start: URL): Promise<Pag
     })),
     ...networkMedia
   ];
-  const enrichedMedia = await Promise.all(media.map(enrichMediaSource));
+  const enrichedMedia = await Promise.all(
+    media.map(async (item) => {
+      const enriched = await enrichMediaSource(item);
+      const isMp4 = enriched.finalUrl.toLowerCase().includes(".mp4") || enriched.contentType?.includes("video/mp4");
+      if (isMp4 && !enriched.finalUrl.startsWith("blob:")) {
+        try {
+          const duration = await page.evaluate(async (videoUrl) => {
+            return new Promise<number>((resolve) => {
+              const video = document.createElement("video");
+              video.src = videoUrl;
+              video.preload = "metadata";
+              video.onloadedmetadata = () => resolve(video.duration);
+              video.onerror = () => resolve(0);
+              setTimeout(() => resolve(0), 4000);
+            });
+          }, enriched.finalUrl).catch(() => 0);
+          
+          enriched.duration = duration;
+        } catch {
+          // ignore
+        }
+      }
+      return enriched;
+    })
+  );
 
   const links = extracted.links
     .map((link) => {
